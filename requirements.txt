@@ -1,0 +1,12 @@
+# Basic
+logzero
+requests
+
+# Selenium
+selenium
+
+# Timezone
+pytz
+
+# Database
+psycopg2
