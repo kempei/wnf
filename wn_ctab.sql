@@ -14,6 +14,8 @@ CREATE TABLE wn_portfolio_detail (
     amount_jpy_delta NUMERIC(18,0),
     amount_usd NUMERIC(20,2),
     amount_usd_delta NUMERIC(20,2),
+    price_usd NUMERIC(20,2),
+    qty NUMERIC(20,3),
     PRIMARY KEY (log_date, brand)
 );
 

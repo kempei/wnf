@@ -1,51 +1,21 @@
+from scraper import Scraper
+
 from logzero import logger
 import logzero
-import re
+
+from selenium.webdriver.support import expected_conditions as ec
 import psycopg2
 from prepare import PreparingCursor
 
-import selenium 
-from selenium import webdriver 
-from selenium.webdriver.support.ui import Select
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as ec
+import os, datetime, re
 
-import requests
+from decimal import Decimal
 
-import os, time, datetime
-import imaplib, email, re, pytz
+import simpleslack
 
 # 対象: 購入 リバランス DeTax
 
-class WealthNavi():
-    def db_init(self):
-        logger.info("postgresql initializing...")
-        db_user = os.environ['DB_USER']
-        db_endpoint = os.environ['DB_ENDPOINT']
-        db_pass = os.environ['DB_PASS']
-        dsn = "postgresql://{0}:{1}@{2}:5432/money".format(db_user, db_pass, db_endpoint) 
-        self.conn = psycopg2.connect(dsn)
-        
-    def init(self):
-        logger.info("selenium initializing...")
-        options = webdriver.ChromeOptions()
-        options.add_argument("--headless")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--window-size=1280x3200")
-        options.add_argument("--disable-application-cache")
-        options.add_argument("--disable-infobars")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--hide-scrollbars")
-        options.add_argument("--v=99")
-        options.add_argument("--single-process")
-        options.add_argument("--ignore-certificate-errors")
-        options.add_argument("--homedir=/tmp")
-        options.add_argument('--user-agent=Mozilla/5.0')
-        options.add_experimental_option("prefs", {'profile.managed_default_content_settings.images':2})
-        self.driver = webdriver.Chrome(options=options)
-        self.wait = WebDriverWait(self.driver, 5)
+class WealthNavi(Scraper):
 
     def login(self):
         self.driver.execute_script("window.open()")
@@ -57,29 +27,21 @@ class WealthNavi():
         self.driver.get('https://invest.wealthnavi.com')
         self.wait.until(ec.presence_of_all_elements_located)
         
-        login_time = datetime.datetime.now(pytz.timezone('Asia/Tokyo'))
         self.send_to_element('//*[@id="username"]', wn_id)
         self.send_to_element('//*[@id="password"]', wn_pass)
         self.driver.find_element_by_xpath('//*[@id="login"]').click()
         self.wait.until(ec.presence_of_all_elements_located)
-        if self.driver.find_elements_by_id("menu-dashboard"):
+        if self.driver.title == "ホーム : WealthNavi（ウェルスナビ）":
             logger.info("successfully logged in.")
         else:
-            raise ValueError("failed to log in.")
+            logger.error("invalid title: {0}".format(self.driver.title))
+            raise ValueError("failed to log in. title = {0}".format(self.driver.title))
             
-    def existance_check(self, con, table_name, cols, values):
-        cur_check = con.cursor(cursor_factory=PreparingCursor)
-        sql = 'SELECT COUNT(*) FROM wn_{0} WHERE {1} = %s'.format(table_name, cols[0])
-        for i in range(1, len(cols)):
-            sql = sql + ' AND {0} = %s'.format(cols[i])
-        cur_check.prepare(sql)
-        cur_check.execute(values)
-        return not cur_check.fetchone() == (0,)
-
     def portfolio(self):
-        log_date = datetime.datetime.now(pytz.timezone('Asia/Tokyo'))
+        log_date = self.get_local_date()
+        logger.info('inserting data as {0}'.format(log_date))
         with self.conn as con:
-            if self.existance_check(con, 'portfolio', ['log_date'], [log_date]):
+            if self.existance_check(con, 'wn_portfolio', ['log_date'], [log_date]):
                 cur_delete = con.cursor(cursor_factory=PreparingCursor)
                 cur_delete.prepare('DELETE FROM wn_portfolio WHERE log_date = %s')
                 cur_delete.execute((log_date,))
@@ -93,8 +55,8 @@ class WealthNavi():
                           'VALUES (%s, %s, %s, %s, %s, %s)')
             cur_pd = con.cursor(cursor_factory=PreparingCursor)
             cur_pd.prepare('INSERT INTO wn_portfolio_detail ' +
-                           '(log_date, brand, amount_jpy, amount_jpy_delta, amount_usd, amount_usd_delta) ' +
-                           'VALUES (%s, %s, %s, %s, %s, %s)')
+                           '(log_date, brand, amount_jpy, amount_jpy_delta, amount_usd, amount_usd_delta, price_usd, qty) ' +
+                           'VALUES (%s, %s, %s, %s, %s, %s, %s, %s)')
             cur_h = con.cursor(cursor_factory=PreparingCursor)
             cur_h.prepare('INSERT INTO wn_history ' +
                            '(start_date, end_date, history_type, total_jpy, usdrate) ' +
@@ -116,7 +78,13 @@ class WealthNavi():
                 self.driver.find_element_by_xpath('//*[@id="content"]/div/div/section[1]/header/div/dl/dd[2]/label/span').click() # ドル
                 usd = self.to_number(tds[2].text)
                 usd_delta = self.to_number(tds[3].text)
-                cur_pd.execute((log_date, brand, jpy, jpy_delta, usd, usd_delta))
+                if brand != 'CASH':
+                    price_usd = self.get_brand_price(brand) #Decimal
+                    qty = Decimal(usd) / price_usd
+                else:
+                    price_usd = Decimal('0')
+                    qty = Decimal('0')
+                cur_pd.execute((log_date, brand, jpy, jpy_delta, usd, usd_delta, price_usd, qty))
             logger.info("inserted wn_portfolio_detail for {0}".format(log_date))
 
             total_jpy = self.to_number(self.driver.find_element_by_xpath('//*[@id="content"]/div/div/section[2]/div/div/div[1]/div[1]/dl[1]/dt').text)
@@ -147,14 +115,15 @@ class WealthNavi():
                     history_type = entry.find_element_by_class_name('assets-type').text
                     if history_type in target_type:
                         if len(entry.find_elements_by_class_name('assets-detail')) > 0:
-                            total_jpy = self.to_number(entry.find_element_by_class_name('assets-detail').text)
+                            total_trade_jpy = self.to_number(entry.find_element_by_class_name('assets-detail').text)
                         else:
-                            total_jpy = None
+                            total_trade_jpy = None
                         date_root = entry.find_element_by_class_name('date')
                         start_date = self.to_date(date_root.find_element_by_xpath('time').text)
                         end_date = self.to_date(date_root.find_element_by_xpath('span[2]/time').text)
-                        logger.debug("{0} {1}-{2} {3}".format(history_type, start_date, end_date, total_jpy))
-                        if self.existance_check(con, 'history', ['start_date', 'history_type'], [start_date, target_type[history_type]]):
+                        logger.debug("{0} {1}-{2} {3}".format(history_type, start_date, end_date, total_trade_jpy))
+                        slack_text = ':dollar:{0}を{1}に実施しました(受取日={2})'.format(history_type, start_date.strftime('%m月%d日'), end_date.strftime('%m月%d日'))
+                        if self.existance_check(con, 'wn_history', ['start_date', 'history_type'], [start_date, target_type[history_type]]):
                             end_flag = True
                             logger.info("loop break at {0} {1}".format(start_date, history_type))
                             break
@@ -174,7 +143,10 @@ class WealthNavi():
                                     trade_usd = self.to_number(spans[1].text)
                                     logger.debug("{0} {1} {2} {3} {4} {5}".format(history_brand, trade_qty, brand_price_usd, history_usdrate, trade_jpy, trade_usd))
                                     cur_hd.execute((start_date, target_type[history_type], target_type[trade_type], history_brand, brand_price_usd, trade_qty, trade_jpy, trade_usd))
-                            cur_h.execute((start_date, end_date, target_type[history_type], total_jpy, history_usdrate))
+                                    slack_text += '\n - {0}を${1}で{2}口{3}しました(合計${4})'.format(history_brand, brand_price_usd, trade_qty, trade_type, trade_usd)
+                            cur_h.execute((start_date, end_date, target_type[history_type], total_trade_jpy, history_usdrate))
+                            slack_text += '\n(為替レート 1ドル={0}円)'.format(history_usdrate)
+                            simpleslack.send_to_slack(slack_text)
                     elif history_type not in nontarget_type:
                         logger.warning('unknown history type "{0}"'.format(history_type))
                 logger.info("processed No.{0} page".format(page))
@@ -183,27 +155,8 @@ class WealthNavi():
             logger.info("inserted wn_portfolio for {0}".format(log_date))
             con.commit()
             logger.info("transaction committed")
-    
-        
-    def close(self):
-        try:
-            self.conn.close()
-        except:
-            logger.debug("Ignore exception (conn close)")
-
-        try:
-            self.driver.close()
-        except:
-            logger.debug("Ignore exception (driver close)")
-
-        try:
-            self.driver.quit()
-        except:
-            logger.debug("Ignore exception (driver quit)")
-
 
 ############################################################
-
     def to_date(self, text):
         return datetime.datetime.strptime(text, '%Y年%m月%d日')
     
@@ -218,21 +171,6 @@ class WealthNavi():
             return 'CASH'
         else:
             return result.group(1)
-        
-    def print_html(self):
-        html = self.driver.execute_script("return document.getElementsByTagName('html')[0].innerHTML")
-        print(html)
-
-    def send_to_element(self, xpath, keys):
-        element = self.driver.find_element_by_xpath(xpath)
-        element.clear()
-        logger.debug("[send_to_element] " + xpath)
-        element.send_keys(keys)
-
-    def send_to_element_direct(self, element, keys):
-        element.clear()
-        logger.debug("[send_to_element] " + element.get_attribute('id'))
-        element.send_keys(keys)
 
 if __name__ == "__main__":
     if "LOG_LEVEL" in os.environ:

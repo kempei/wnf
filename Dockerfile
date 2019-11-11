@@ -21,6 +21,10 @@ RUN apk update && \
 	rm -f get-pip.py
 
 ADD prepare.py $project_dir
+ADD scraper.py $project_dir
+ADD simpleslack.py $project_dir
+ADD trade.py $project_dir
 ADD wnf.py $project_dir
+ADD sbi.py $project_dir
 
-CMD [ "python", "-u", "/tmp/work/wnf.py" ]
+CMD [ "python", "-u", "/tmp/work/trade.py" ]
