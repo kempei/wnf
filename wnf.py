@@ -95,7 +95,7 @@ class WealthNavi(Scraper):
             total_deposit = self.to_number(self.driver.find_element_by_xpath('//*[@class="transaction-total"]/dl[1]/dd[1]/span').text)
             total_withdraw = self.to_number(self.driver.find_element_by_xpath('//*[@class="transaction-total"]/dl[1]/dd[2]/span').text)
             
-            last_page = int(self.driver.find_element_by_class_name('last-page').text)
+            last_page = int(self.driver.find_element_by_xpath('//*[@id="content"]/div/div/nav/ul/li[last()]').text)
             logger.info("{0} pages in transactions".format(last_page))
             
             target_type = {
