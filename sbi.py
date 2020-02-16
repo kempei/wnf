@@ -152,7 +152,7 @@ WHERE m_log_date = %s
         cur_diff.execute((log_date,))
         buy_list = []
         for row in cur_diff:
-            logger.info(row)
+            logger.debug(row)
             brand = row[4]
             usdrate = row[0] # Decimal
             wn_qty = row[2] # Decimal
