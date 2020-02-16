@@ -68,16 +68,15 @@ class WealthNavi(Scraper):
 
             
             self.driver.get('https://invest.wealthnavi.com/service/portfolio')
+            logger.info("title: {0}".format(self.driver.title))
             trs = self.driver.find_elements_by_xpath('//*[@id="assets-class-data"]/tbody/tr')
             for tr in trs:
-                brand = self.to_brand(tr.find_element_by_tag_name('th').text) # 銘柄
+                brand = self.to_brand(tr.find_element_by_tag_name('th').get_attribute("textContent")) # 銘柄
                 tds = tr.find_elements_by_tag_name('td')
-                self.driver.find_element_by_xpath('//*[@id="content"]/div/div/section[1]/header/div/dl/dd[1]/label/span').click() # 円
-                jpy = self.to_number(tds[0].text)
-                jpy_delta = self.to_number(tds[1].text)
-                self.driver.find_element_by_xpath('//*[@id="content"]/div/div/section[1]/header/div/dl/dd[2]/label/span').click() # ドル
-                usd = self.to_number(tds[2].text)
-                usd_delta = self.to_number(tds[3].text)
+                jpy = self.to_number(tds[0].get_attribute("textContent"))
+                jpy_delta = self.to_number(tds[1].get_attribute("textContent"))
+                usd = self.to_number(tds[2].get_attribute("textContent"))
+                usd_delta = self.to_number(tds[3].get_attribute("textContent"))
                 if brand != 'CASH':
                     price_usd = self.get_brand_price(brand) #Decimal
                     qty = Decimal(usd) / price_usd
@@ -85,6 +84,7 @@ class WealthNavi(Scraper):
                     price_usd = Decimal('0')
                     qty = Decimal('0')
                 cur_pd.execute((log_date, brand, jpy, jpy_delta, usd, usd_delta, price_usd, qty))
+                logger.debug("inserting wn_portfolio_detail for {0},{1},{2},{3},{4},{5},{6},{7}".format(log_date, brand, jpy, jpy_delta, usd, usd_delta, price_usd, qty))
             logger.info("inserted wn_portfolio_detail for {0}".format(log_date))
 
             total_jpy = self.to_number(self.driver.find_element_by_xpath('//*[@id="content"]/div/div/section[2]/div/div/div[1]/div[1]/dl[1]/dt').text)
@@ -95,7 +95,7 @@ class WealthNavi(Scraper):
             total_deposit = self.to_number(self.driver.find_element_by_xpath('//*[@class="transaction-total"]/dl[1]/dd[1]/span').text)
             total_withdraw = self.to_number(self.driver.find_element_by_xpath('//*[@class="transaction-total"]/dl[1]/dd[2]/span').text)
             
-            last_page = int(self.driver.find_element_by_xpath('//*[@id="content"]/div/div/nav/ul/li[last()]').text)
+            last_page = self.to_number(self.driver.find_element_by_xpath('//*[@id="content"]/div/div/nav/ul/li[last()]').text)
             logger.info("{0} pages in transactions".format(last_page))
             
             target_type = {
@@ -168,6 +168,7 @@ class WealthNavi(Scraper):
     def to_brand(self, text):
         result = re.match('.*\((.+)\)', text)
         if result is None:
+            logger.debug('to_brand: {0}'.format(text))
             return 'CASH'
         else:
             return result.group(1)

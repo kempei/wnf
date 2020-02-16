@@ -128,7 +128,7 @@ FROM (SELECT COUNT(*) FROM wn_portfolio where log_date = %s) w
         cur_check.prepare(check_sql)
         cur_check.execute((log_date,log_date))
         row = cur_check.fetchone()
-        assert row[0] > Decimal('0') and row[1] > Decimal('0')
+        assert row[0] >= Decimal('0') and row[1] >= Decimal('0')
 
         diff_sql = """SELECT *
 FROM (SELECT s.usdrate usdrate

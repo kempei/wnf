@@ -10,6 +10,5 @@ s = Slack()
 def send_to_slack(text):
     response = s.slack_client.chat_postMessage(channel = s.slack_channel, text=text)
     assert response["ok"]
-    assert response["message"]["text"] == text
 
     
