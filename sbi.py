@@ -287,7 +287,7 @@ WHERE m_log_date = %s
             return [result.group(1), result.group(2)]
 
     def to_brand(self, text):
-        result = re.match('([A-Z]*) .*', text)
+        result = re.match('([A-Z]*)[^A-Z].*', text)
         if result is None:
             raise AssertionError('cannot parse for brand: {0}'.format(text))
         else:
