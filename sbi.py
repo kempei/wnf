@@ -88,24 +88,24 @@ class SbiTrade(Scraper):
             for tr in trs:
                 if tr.get_attribute('class') != 'mtext':
                     continue
-                brand = self.to_brand(tr.find_element_by_xpath('td[1]/a').text)
+                brand = self.to_brand(tr.find_element_by_xpath('td[1]/a').get_attribute("textContent"))
                 brand_link = tr.find_element_by_xpath('td[1]/a').get_attribute('href')
                 if not self.check_etf(brand_link):
                     logger.debug('skipped brand: {0}'.format(brand))
                     continue
-                qty_text = tr.find_element_by_xpath('td[2]').text
+                qty_text = tr.find_element_by_xpath('td[2]').get_attribute("textContent")
                 if '（' in qty_text:
                     qty_array = self.to_number_array(qty_text)
                     qty = int(qty_array[0]) - int(qty_array[1])
                 else:
                     qty = self.to_number(qty_text)
-                price_usd = self.to_number_array(tr.find_element_by_xpath('td[3]').text)[1]
-                amount_usd = self.to_number_array(tr.find_element_by_xpath('td[4]').text)[0]
-                amount_jpy = self.to_number_array(tr.find_element_by_xpath('td[4]').text)[1]
+                price_usd = self.to_number_array(tr.find_element_by_xpath('td[3]').get_attribute("textContent"))[1]
+                amount_usd = self.to_number_array(tr.find_element_by_xpath('td[4]').get_attribute("textContent"))[0]
+                amount_jpy = self.to_number_array(tr.find_element_by_xpath('td[4]').get_attribute("textContent"))[1]
                 total_jpy += int(amount_jpy)
                 total_usd += float(amount_usd)
-                amount_usd_delta = self.to_number_array(tr.find_element_by_xpath('td[5]').text)[0]
-                amount_jpy_delta = self.to_number_array(tr.find_element_by_xpath('td[5]').text)[1]
+                amount_usd_delta = self.to_number_array(tr.find_element_by_xpath('td[5]').get_attribute("textContent"))[0]
+                amount_jpy_delta = self.to_number_array(tr.find_element_by_xpath('td[5]').get_attribute("textContent"))[1]
                 cur_pd.execute((log_date, brand, price_usd, qty, amount_jpy, amount_jpy_delta, amount_usd, amount_usd_delta))
 
             logger.info("inserted sbi_portfolio_detail for {0}".format(log_date))
@@ -271,7 +271,7 @@ WHERE m_log_date = %s
         self.driver.execute_script("window.open()")
         self.driver.switch_to.window(self.driver.window_handles[1])
         self.driver.get(link)
-        detail = self.driver.find_element_by_xpath('//*[@id="main"]/div[3]/table/tbody/tr[2]/td/table/tbody/tr/td[3]/font/a').text[:3]
+        detail = self.driver.find_element_by_xpath('//*[@id="main"]/div[3]/table/tbody/tr[2]/td/table/tbody/tr/td[3]/font/a').get_attribute("textContent")[:3]
         self.driver.close()
         self.driver.switch_to.window(self.driver.window_handles[0]) 
         return detail == 'ETF'
