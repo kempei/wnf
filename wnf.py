@@ -136,7 +136,7 @@ class WealthNavi(Scraper):
                                 for tr in trs:
                                     spans = tr.find_elements_by_xpath('th/span')
                                     history_brand = spans[1].get_attribute("textContent")
-                                    trade_qty = spans[2].text
+                                    trade_qty = self.to_number(spans[2].text)
                                     brand_price_usd = self.to_number(spans[3].get_attribute("textContent"))
                                     history_usdrate = spans[4].get_attribute("textContent")
                                     spans = tr.find_elements_by_xpath('td/span')
