@@ -109,8 +109,7 @@ class SbiTrade(Scraper):
                 cur_pd.execute((log_date, brand, price_usd, qty, amount_jpy, amount_jpy_delta, amount_usd, amount_usd_delta))
 
             logger.info("inserted sbi_portfolio_detail for {0}".format(log_date))
-
-            usdrate = self.driver.find_element_by_xpath('/html/body/div/table[2]/tbody/tr/td[1]/table/tbody/tr/td[2]/table[2]/tbody/tr[1]/td[2]/table[10]/tbody/tr[2]/td[2]').text
+            usdrate = self.driver.find_element_by_xpath('//*[@id="id2"]/../../../../following-sibling::table/tbody/tr[2]/td[2]').text
             cur_p.execute((log_date, usdrate, total_jpy, total_usd, inv_capacity_jpy))
 
             logger.info("inserted sbi_portfolio for {0}".format(log_date))
