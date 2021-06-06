@@ -218,7 +218,7 @@ WHERE m_log_date = %s
         time.sleep(1)
         self.send_to_element('//*[@id="userName"]', os.environ['SBI_BANK_ID'])
         self.send_to_element('//*[@id="loginPwdSet"]', os.environ['SBI_BANK_PASS'])
-        self.driver.find_element_by_xpath('/html/body/app/div/ng-component/div/main/ng-component/div/form/section/div/ul/li/nb-button-login').click()
+        self.driver.find_element_by_xpath('//*[@nblabel="ログイン"]').click()
         self.wait.until(ec.presence_of_all_elements_located)
         time.sleep(5)
         self.title_check('即時決済サービス(確認)｜住信SBIネット銀行')
