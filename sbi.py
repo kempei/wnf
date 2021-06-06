@@ -214,7 +214,7 @@ WHERE m_log_date = %s
         self.driver.switch_to.window(self.get_handle_with_xpath('//*[@id="sbi-login"]'))
         self.title_check('即時決済サービス(ログイン)｜住信SBIネット銀行')
         self.wait.until(ec.presence_of_all_elements_located)
-        self.driver.find_element_by_xpath('//*[@class="sbi-login"]').click()
+        self.driver.find_element_by_xpath('//*[@id="sbi-login"]').click()
         time.sleep(1)
         self.send_to_element('//*[@id="userName"]', os.environ['SBI_BANK_ID'])
         self.send_to_element('//*[@id="loginPwdSet"]', os.environ['SBI_BANK_PASS'])
