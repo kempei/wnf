@@ -214,7 +214,7 @@ WHERE m_log_date = %s
         self.driver.switch_to.window(self.get_handle_with_xpath('//*[@id="sbi-login"]'))
         self.title_check('即時決済サービス(ログイン)｜住信SBIネット銀行')
         self.wait.until(ec.presence_of_all_elements_located)
-        self.driver.find_element_by_xpath('//*[@class="neo-sbiLogo"]').click()
+        self.driver.find_element_by_xpath('//*[@class="sbi-login"]').click()
         time.sleep(1)
         self.send_to_element('//*[@id="userName"]', os.environ['SBI_BANK_ID'])
         self.send_to_element('//*[@id="loginPwdSet"]', os.environ['SBI_BANK_PASS'])
@@ -222,7 +222,7 @@ WHERE m_log_date = %s
         self.wait.until(ec.presence_of_all_elements_located)
         time.sleep(5)
         self.title_check('即時決済サービス(確認)｜住信SBIネット銀行')
-        # 出勤口座の選択は行わない (デフォルトで普通預金口座)
+        # 出金口座の選択は行わない (デフォルトで普通預金口座)
         if len(self.driver.find_elements_by_xpath('//*[@id="toriPwd"]')) == 0:
             self.driver.find_element_by_xpath('/html/body/app/div/ng-component/div/main/ng-component/div/form/section/div/div[3]/p/a/span').click() #キャンセル
             self.wait.until(ec.presence_of_all_elements_located)

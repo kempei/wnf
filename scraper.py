@@ -6,8 +6,6 @@ import selenium
 from selenium import webdriver 
 from selenium.webdriver.support.ui import WebDriverWait
 
-import slack
-
 import os, datetime, time, pytz, requests
 
 from decimal import Decimal
@@ -24,9 +22,9 @@ class Scraper():
     def init(self):
         logger.info("selenium initializing...")
 
+        if not 'ALPHAVANTAGE_API_KEY' in os.environ:
+            raise ValueError("env ALPHAVANTAGE_API_KEY is not found.")
         self.alphavantage_apikey = os.environ['ALPHAVANTAGE_API_KEY']
-        self.slack_client = slack.WebClient(token=os.environ['SLACK_CLIENT_SECRET'])
-        self.slack_channel = os.environ['SLACK_CHANNEL']
 
         options = webdriver.ChromeOptions()
         options.add_argument("--headless")
@@ -44,11 +42,6 @@ class Scraper():
         options.add_experimental_option("prefs", {'profile.managed_default_content_settings.images':2})
         self.driver = webdriver.Chrome(options=options)
         self.wait = WebDriverWait(self.driver, 5)
-    
-    def send_to_slack(self, text):
-        response = self.slack_client.chat_postMessage(channel = self.slack_channel, text=text)
-        assert response["ok"]
-        assert response["message"]["text"] == text
 
     def close(self):
         try:
