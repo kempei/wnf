@@ -31,7 +31,7 @@ class WealthNavi(Scraper):
         self.send_to_element('//*[@id="password"]', wn_pass)
         self.driver.find_element_by_xpath('//*[@id="login"]').click()
         self.wait.until(ec.presence_of_all_elements_located)
-        if self.driver.title == "ホーム : WealthNavi（ウェルスナビ）":
+        if self.driver.title == "ホーム : WealthNavi":
             logger.info("successfully logged in.")
         else:
             logger.error("invalid title: {0}".format(self.driver.title))
