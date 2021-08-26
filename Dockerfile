@@ -6,7 +6,8 @@ RUN echo "http://dl-4.alpinelinux.org/alpine/v3.13/main" >> /etc/apk/repositorie
 
 # install chromedriver
 RUN apk add --update --no-cache \
-    chromium chromium-chromedriver
+    chromium chromium-chromedriver \
+    py3-aiohttp py3-multidict py3-yarl
 
 ARG project_dir=/tmp/work
 RUN mkdir $project_dir
@@ -20,7 +21,7 @@ RUN apk add --no-cache --virtual .build-deps \
     postgresql-dev \
     && pip install --no-cache-dir psycopg2 \
     && apk del --no-cache .build-deps
-    
+
 RUN pip install -r requirements.txt && \
     find /usr/local -depth \
     \( \
