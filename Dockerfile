@@ -18,11 +18,9 @@ RUN apk add --no-cache --virtual .build-deps \
     gcc \
     python3-dev \
     musl-dev \
-    postgresql-dev \
-    && pip install --no-cache-dir psycopg2 \
-    && apk del --no-cache .build-deps
-
-RUN pip install -r requirements.txt && \
+    postgresql-dev && \
+    pip install --no-cache-dir -r requirements.txt && \
+    apk del --no-cache .build-deps && \
     find /usr/local -depth \
     \( \
 		\( -type d -a \( -name test -o -name tests \) \) \
