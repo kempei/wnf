@@ -1,0 +1,63 @@
+  
+version: 0.2
+# 参考: https://docs.aws.amazon.com/ja_jp/codepipeline/latest/userguide/ecs-cd-pipeline.html
+env:
+  secrets-manager:
+    DOCKERHUB_USER: arn:aws:secretsmanager:ap-northeast-1:$ACCOUNT_ID:secret:$SECRET_KEY:username
+    DOCKERHUB_PASS: arn:aws:secretsmanager:ap-northeast-1:$ACCOUNT_ID:secret:$SECRET_KEY:password
+  parameter-store:
+    WN_ID: "wn_id"
+    WN_PASS: "wn_pass"
+    SBI_ID: "sbi_id"
+    SBI_PASS: "sbi_pass"
+    SBI_TRADE_PASS: "sbi_trade_pass"
+    SBI_BANK_ID: "sbi_bank_id"
+    SBI_BANK_PASS: "sbi_bank_pass"
+    SBI_BANK_TRADE_PASS: "sbi_bank_trade_pass"
+    DB_USER: "postgres"
+    DB_PASS: "db_pass"
+    DB_ENDPOINT: "db_endpoint"
+    ALPHAVANTAGE_API_KEY: "alpha_vantage_api_key"
+    SLACK_CLIENT_SECRET: "slack_client_secret"
+    SLACK_CHANNEL: "slack_channel"
+  variables:
+    IMAGE_REPO_NAME: "wnf"
+    DOCKERENV: "-e WN_ID -e WN_PASS -e SBI_ID -e SBI_PASS -e SBI_TRADE_PASS -e SBI_BANK_ID -e SBI_BANK_PASS -e SBI_BANK_TRADE_PASS -e DB_USER -e DB_PASS -e DB_ENDPOINT -e ALPHAVANTAGE_API_KEY -e SLACK_CLIENT_SECRET -e SLACK_CHANNEL -e SKIP_WN"
+phases:
+  pre_build:
+    commands:
+      - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
+      #- ASSUME_ROLE_ARN="arn:aws:iam::$AWS_ACCOUNT_ID:role/Test$IMAGE_REPO_NAME"
+      #- export TEMP_ROLE=$(aws sts assume-role --role-arn $ASSUME_ROLE_ARN --role-session-name test)
+      #- export AWS_ACCESS_KEY_ID=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.AccessKeyId')
+      #- export AWS_SECRET_ACCESS_KEY=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SecretAccessKey')
+      #- export AWS_SESSION_TOKEN=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SessionToken')
+      - echo Logging in to Amazon ECR...
+      - aws --version
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      # Docker Hub へのログイン
+      - echo Logging in to Docker Hub...
+      - echo $DOCKERHUB_PASS | docker login -u $DOCKERHUB_USER --password-stdin
+      # タグ情報
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH:=latest}
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker image...
+      - docker build -t $IMAGE_REPO_NAME:latest .
+      - docker tag $IMAGE_REPO_NAME:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
+      - docker tag $IMAGE_REPO_NAME:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:latest
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      #- echo Testing Docker image...
+      #- docker run $DOCKERENV -t $IMAGE_REPO_NAME:latest python -m unittest discover tests
+      #- echo Test completed on `date`
+      - echo Pushing the Docker image...
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:latest
+      - echo Writing image definitions file...
+      - printf '[{"name":"%s","imageUri":"%s"}]' $IMAGE_REPO_NAME $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG > imagedefinitions.json
+artifacts:
+    files: imagedefinitions.json
