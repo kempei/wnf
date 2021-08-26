@@ -1,17 +1,16 @@
-from scraper import Scraper
+from wnf.scraper import Scraper
+from wnf.prepare import PreparingCursor
+import wnf.simpleslack as simpleslack
 
 from logzero import logger
 import logzero
 
+from selenium.webdriver.remote.webelement import WebElement, By
 from selenium.webdriver.support import expected_conditions as ec
-import psycopg2
-from prepare import PreparingCursor
 
 import os, time, datetime, re
 
 from decimal import Decimal, ROUND_UP, ROUND_DOWN
-
-import simpleslack
 
 class SbiTrade(Scraper):
 
@@ -30,7 +29,6 @@ class SbiTrade(Scraper):
         
     def login(self):
         self.sbi_core_url = 'https://www.sbisec.co.jp/ETGate/'
-        self.driver.execute_script("window.open()")
         if not 'SBI_ID' in os.environ or not 'SBI_PASS' or not 'SBI_TRADE_PASS' in os.environ:
             raise ValueError("env SBI_ID and/or SBI_PASS and/or SBI_TRADE_PASS are not found.")
         sbi_id = os.environ['SBI_ID']
@@ -40,17 +38,40 @@ class SbiTrade(Scraper):
             raise ValueError("env SBI_BANK_ID and/or SBI_BANK_PASS and/or SBI_BANK_TRADE_PASS are not found.")
 
         self.driver.get(self.sbi_core_url)
+        time.sleep(2)
         self.wait.until(ec.presence_of_all_elements_located)
         
         self.send_to_element('//*[@name="user_id"]', sbi_id)
         self.send_to_element('//*[@name="user_password"]', sbi_pass)
         self.driver.find_element_by_xpath('//*[@name="ACT_login"]').click()
+        time.sleep(2)
         self.wait.until(ec.presence_of_all_elements_located)
         if self.driver.find_elements_by_xpath('//*[@id="MAINAREA01"]/div[1]/div/div/p[1]'):
             logger.info("successfully logged in. current_url = {0}".format(self.driver.current_url))
             self.sbi_core_url = self.driver.current_url
         else:
-            raise ValueError("failed to log in.")
+            title_text_elements = self.driver.find_elements_by_class_name("title-text")
+            if len(title_text_elements) == 0:
+                print(self.driver.page_source)
+                raise ValueError("failed to log in.")
+            if title_text_elements[0].text == "重要なお知らせ":
+                table_element:WebElement = self.driver.find_element_by_xpath("/html/body/div[1]/table/tbody/tr/td[1]/table/tbody/tr[2]/td[2]/form/table[4]/tbody/tr/td/table/tbody")
+                link_elements:list[WebElement] = table_element.find_elements_by_tag_name("a")
+                message = f":loudspeaker:重要なお知らせが{len(link_elements)}件届いています"
+                links:list[str] = list()
+                for link_element in link_elements:
+                    logger.info(f"Important information: {link_element.text}")
+                    links.append(link_element.get_attribute('href'))
+                    message += f"\n{link_element.text}"
+                for link in links:
+                    logger.debug(f"get: {link}")
+                    self.driver.get(link)
+                    self.wait.until(ec.presence_of_all_elements_located)
+                    button_xpath = "//input[@value='確認']"
+                    self.wait.until(ec.element_to_be_clickable((By.XPATH, button_xpath)))
+                    self.driver.find_element_by_xpath(button_xpath).click()
+                    self.wait.until(ec.presence_of_all_elements_located)
+                simpleslack.send_to_slack(message)
 
     def portfolio(self):
         log_date = self.get_local_date()

@@ -1,10 +1,9 @@
-from wnf import WealthNavi
-from sbi import SbiTrade
+from wnf.wnf import WealthNavi
+from wnf.sbi import SbiTrade
+import wnf.simpleslack as simpleslack
 
 from logzero import logger
 import logzero, os, time
-
-import simpleslack
 
 if __name__ == "__main__":
     start = time.time()

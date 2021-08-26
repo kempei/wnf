@@ -1,17 +1,16 @@
-from scraper import Scraper
+from wnf.scraper import Scraper
+from wnf.prepare import PreparingCursor
+import wnf.simpleslack as simpleslack
 
 from logzero import logger
 import logzero
 
 from selenium.webdriver.support import expected_conditions as ec
-import psycopg2
-from prepare import PreparingCursor
 
 import os, datetime, re
 
 from decimal import Decimal
 
-import simpleslack
 
 # 対象: 購入 リバランス DeTax
 

@@ -1,8 +1,8 @@
 from logzero import logger
 import psycopg2
-from prepare import PreparingCursor
 
-import selenium 
+from wnf.prepare import PreparingCursor
+
 from selenium import webdriver 
 from selenium.webdriver.support.ui import WebDriverWait
 
@@ -35,9 +35,9 @@ class Scraper():
         options.add_argument("--no-sandbox")
         options.add_argument("--hide-scrollbars")
         options.add_argument("--v=99")
-        options.add_argument("--single-process")
+        # options.add_argument("--single-process")
         options.add_argument("--ignore-certificate-errors")
-        options.add_argument("--homedir=/tmp")
+        # options.add_argument("--homedir=/tmp")
         options.add_argument('--user-agent=Mozilla/5.0')
         options.add_experimental_option("prefs", {'profile.managed_default_content_settings.images':2})
         self.driver = webdriver.Chrome(options=options)

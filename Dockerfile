@@ -13,21 +13,15 @@ RUN mkdir $project_dir
 ADD requirements.txt $project_dir
 WORKDIR $project_dir
 
-RUN apk update && \
-    apk add postgresql-libs && \
-    apk add --virtual .build-deps gcc musl-dev postgresql-dev && \
-    pip install --upgrade pip && \
-    pip install -r requirements.txt && \
-    apk --purge del .build-deps && \
+RUN pip install -r requirements.txt && \
     find /usr/local -depth \
     \( \
 		\( -type d -a \( -name test -o -name tests \) \) \
 		-o \
 		\( -type f -a \( -name '*.pyc' -o -name '*.pyo' \) \) \
 	\) \
-	-exec rm -rf '{}' +; \
-	rm -f get-pip.py
+	-exec rm -rf '{}' +
 
 COPY wnf/ $project_dir/wnf/
 
-CMD [ "python", "-u", "/tmp/work/wnf/trade.py" ]
+CMD [ "python", "-m", "wnf/trade" ]
