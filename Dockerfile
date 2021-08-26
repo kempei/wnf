@@ -31,4 +31,4 @@ RUN apk add --no-cache --virtual .build-deps \
 
 COPY wnf/ $project_dir/wnf/
 
-CMD [ "python", "-m", "wnf/trade" ]
+CMD [ "python", "-m", "wnf.trade" ]
