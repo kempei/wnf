@@ -52,7 +52,6 @@ class SbiTrade(Scraper):
         else:
             title_text_elements = self.driver.find_elements_by_class_name("title-text")
             if len(title_text_elements) == 0:
-                print(self.driver.page_source)
                 raise ValueError("failed to log in.")
             if title_text_elements[0].text == "重要なお知らせ":
                 table_element:WebElement = self.driver.find_element_by_xpath("/html/body/div[1]/table/tbody/tr/td[1]/table/tbody/tr[2]/td[2]/form/table[4]/tbody/tr/td/table/tbody")
