@@ -38,13 +38,13 @@ class SbiTrade(Scraper):
             raise ValueError("env SBI_BANK_ID and/or SBI_BANK_PASS and/or SBI_BANK_TRADE_PASS are not found.")
 
         self.driver.get(self.sbi_core_url)
-        time.sleep(2)
+        time.sleep(5)
         self.wait.until(ec.presence_of_all_elements_located)
         
         self.send_to_element('//*[@name="user_id"]', sbi_id)
         self.send_to_element('//*[@name="user_password"]', sbi_pass)
         self.driver.find_element_by_xpath('//*[@name="ACT_login"]').click()
-        time.sleep(2)
+        time.sleep(5)
         self.wait.until(ec.presence_of_all_elements_located)
         if self.driver.find_elements_by_xpath('//*[@id="MAINAREA01"]/div[1]/div/div/p[1]'):
             logger.info("successfully logged in. current_url = {0}".format(self.driver.current_url))
