@@ -41,7 +41,8 @@ class Scraper():
         options.add_argument('--user-agent=Mozilla/5.0')
         options.add_experimental_option("prefs", {'profile.managed_default_content_settings.images':2})
         self.driver = webdriver.Chrome(options=options)
-        self.wait = WebDriverWait(self.driver, 5)
+        self.driver.implicitly_wait(10)
+        self.wait = WebDriverWait(self.driver, 10)
 
     def close(self):
         try:
