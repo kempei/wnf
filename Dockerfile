@@ -6,7 +6,7 @@ RUN echo "http://dl-4.alpinelinux.org/alpine/v3.13/main" >> /etc/apk/repositorie
 
 # install chromedriver
 RUN apk add --update --no-cache \
-    chromium chromium-chromedriver
+    chromium chromium-chromedriver libpq-dev   
 
 ARG project_dir=/tmp/work
 RUN mkdir $project_dir
