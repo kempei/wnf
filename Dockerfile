@@ -7,7 +7,7 @@ RUN echo "http://dl-4.alpinelinux.org/alpine/v3.13/main" >> /etc/apk/repositorie
 # install chromedriver
 RUN apk add --update --no-cache \
     chromium chromium-chromedriver \
-    py3-aiohttp py3-multidict py3-yarl
+    py3-aiohttp py3-multidict py3-yarl postgresql-libs
 
 ARG project_dir=/tmp/work
 RUN mkdir $project_dir
