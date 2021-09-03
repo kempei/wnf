@@ -70,7 +70,11 @@ class SbiTrade(Scraper):
                     self.wait.until(ec.element_to_be_clickable((By.XPATH, button_xpath)))
                     self.driver.find_element_by_xpath(button_xpath).click()
                     self.wait.until(ec.presence_of_all_elements_located)
+                self.driver.get(self.sbi_core_url)
+                time.sleep(5)
+                self.wait.until(ec.presence_of_all_elements_located)
                 simpleslack.send_to_slack(message)
+
 
     def portfolio(self):
         log_date = self.get_local_date()
