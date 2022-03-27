@@ -5,7 +5,6 @@ env:
   parameter-store:
     DOCKERHUB_USER: "dockerhub_user"
     DOCKERHUB_PASS: "dockerhub_pass"
-  parameter-store:
     WN_ID: "wn_id"
     WN_PASS: "wn_pass"
     SBI_ID: "sbi_id"
