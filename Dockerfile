@@ -18,6 +18,7 @@ RUN apk add --no-cache --virtual .build-deps \
     gcc \
     python3-dev \
     musl-dev \
+    libffi-dev \
     build-base \
     postgresql-dev && \
     pip install --no-cache-dir -r requirements.txt && \
