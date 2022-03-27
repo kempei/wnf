@@ -92,8 +92,11 @@ class WealthNavi(Scraper):
             
             self.driver.get('https://invest.wealthnavi.com/service/transaction')
             logger.debug("title: {0}".format(self.driver.title))
-            total_deposit = self.to_number(self.driver.find_element_by_xpath('//*[@class="transaction-total"]/dl[1]/dd[1]/span').get_attribute("textContent"))
-            total_withdraw = self.to_number(self.driver.find_element_by_xpath('//*[@class="transaction-total"]/dl[1]/dd[2]/span').get_attribute("textContent"))
+
+            # 総入金額
+            total_deposit = self.to_number(self.driver.find_element_by_xpath('//*[@class="transaction-money"]/div[1]/dd/span').get_attribute("textContent"))
+            # 総出金額
+            total_withdraw = self.to_number(self.driver.find_element_by_xpath('//*[@class="transaction-money"]/div[2]/dd/span').get_attribute("textContent"))
             
             last_page = int(self.to_number(self.driver.find_element_by_xpath('//*[@id="content"]/div/div/nav/ul/li[last()]').get_attribute("textContent")))
             logger.info("{0} pages in transactions".format(last_page))
@@ -163,7 +166,7 @@ class WealthNavi(Scraper):
     def to_number(self, text):
         if text == '-':
             return None;
-        return text.replace(',','').replace('$','').replace('¥','').replace('+','')
+        return text.replace(',','').replace('$','').replace('¥','').replace('+','').replace(' ','').replace('\n','').strip()
     
     def to_brand(self, text):
         result = re.match('.*\((.+)\)', text)
