@@ -164,9 +164,10 @@ class WealthNavi(Scraper):
         return datetime.datetime.strptime(text, '%Y年%m月%d日')
     
     def to_number(self, text):
-        if text == '-':
+        ret = text.replace(',','').replace('$','').replace('¥','').replace('+','').replace(' ','').replace('\n','').strip()
+        if ret == '-':
             return None;
-        return text.replace(',','').replace('$','').replace('¥','').replace('+','').replace(' ','').replace('\n','').strip()
+        return ret
     
     def to_brand(self, text):
         result = re.match('.*\((.+)\)', text)
