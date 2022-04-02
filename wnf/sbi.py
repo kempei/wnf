@@ -43,19 +43,19 @@ class SbiTrade(Scraper):
         
         self.send_to_element('//*[@name="user_id"]', sbi_id)
         self.send_to_element('//*[@name="user_password"]', sbi_pass)
-        self.driver.find_element_by_xpath('//*[@name="ACT_login"]').click()
+        self.driver.find_element(by=By.XPATH, value='//*[@name="ACT_login"]').click()
         time.sleep(5)
         self.wait.until(ec.presence_of_all_elements_located)
-        if self.driver.find_elements_by_xpath('//*[@id="MAINAREA01"]/div[1]/div/div/p[1]'):
+        if self.driver.find_elements(by=By.XPATH, value='//*[@id="MAINAREA01"]/div[1]/div/div/p[1]'):
             logger.info("successfully logged in. current_url = {0}".format(self.driver.current_url))
             self.sbi_core_url = self.driver.current_url
         else:
-            title_text_elements = self.driver.find_elements_by_class_name("title-text")
+            title_text_elements = self.driver.find_elements(by=By.CLASS_NAME, value="title-text")
             if len(title_text_elements) == 0:
                 raise ValueError("failed to log in.")
             if title_text_elements[0].text == "重要なお知らせ":
-                table_element:WebElement = self.driver.find_element_by_xpath("/html/body/div[1]/table/tbody/tr/td[1]/table/tbody/tr[2]/td[2]/form/table[4]/tbody/tr/td/table/tbody")
-                link_elements:list[WebElement] = table_element.find_elements_by_tag_name("a")
+                table_element:WebElement = self.driver.find_element(by=By.XPATH, value="/html/body/div[1]/table/tbody/tr/td[1]/table/tbody/tr[2]/td[2]/form/table[4]/tbody/tr/td/table/tbody")
+                link_elements:list[WebElement] = table_element.find_elements(by=By.TAG_NAME, value="a")
                 message = f":loudspeaker:重要なお知らせが{len(link_elements)}件届いています"
                 links:list[str] = list()
                 for link_element in link_elements:
@@ -66,9 +66,9 @@ class SbiTrade(Scraper):
                     logger.debug(f"get: {link}")
                     self.driver.get(link)
                     self.wait.until(ec.presence_of_all_elements_located)
-                    button_xpath = "//input[@value='確認']"
+                    button_xpath = "//input[@name='ACT_estimate']"
                     self.wait.until(ec.element_to_be_clickable((By.XPATH, button_xpath)))
-                    self.driver.find_element_by_xpath(button_xpath).click()
+                    self.driver.find_element(by=By.XPATH, value=button_xpath).click()
                     self.wait.until(ec.presence_of_all_elements_located)
                 self.driver.get(self.sbi_core_url)
                 time.sleep(5)
@@ -103,7 +103,7 @@ class SbiTrade(Scraper):
             # 外貨建て口座 - 保有証券 / NISA は見ていない
             self.driver.get(self.get_sbi_url('wallet')) # 口座へ移動
             self.driver.get(self.direct_path_dict['bondlist'])
-            trs = self.driver.find_elements_by_xpath('//*[@id="id2"]/tbody/tr')
+            trs = self.driver.find_elements(by=By.XPATH, value='//*[@id="id2"]/tbody/tr')
             if len(trs) == 0:
                 self.print_html()
                 raise AssertionError('no information at bondlist')
@@ -112,24 +112,24 @@ class SbiTrade(Scraper):
             for tr in trs:
                 if tr.get_attribute('class') != 'mtext':
                     continue
-                brand = self.to_brand(tr.find_element_by_xpath('td[1]/a').get_attribute("textContent"))
-                brand_link = tr.find_element_by_xpath('td[1]/a').get_attribute('href')
+                brand = self.to_brand(tr.find_element(by=By.XPATH, value='td[1]/a').get_attribute("textContent"))
+                brand_link = tr.find_element(by=By.XPATH, value='td[1]/a').get_attribute('href')
                 if not self.check_etf(brand_link):
                     logger.debug('skipped brand: {0}'.format(brand))
                     continue
-                qty_text = tr.find_element_by_xpath('td[2]').get_attribute("textContent")
+                qty_text = tr.find_element(by=By.XPATH, value='td[2]').get_attribute("textContent")
                 if '（' in qty_text:
                     qty_array = self.to_number_array(qty_text)
                     qty = int(qty_array[0]) - int(qty_array[1])
                 else:
                     qty = self.to_number(qty_text)
-                price_usd = self.to_number_array(tr.find_element_by_xpath('td[3]').get_attribute("textContent"))[1]
-                amount_usd = self.to_number_array(tr.find_element_by_xpath('td[4]').get_attribute("textContent"))[0]
-                amount_jpy = self.to_number_array(tr.find_element_by_xpath('td[4]').get_attribute("textContent"))[1]
+                price_usd = self.to_number_array(tr.find_element(by=By.XPATH, value='td[3]').get_attribute("textContent"))[1]
+                amount_usd = self.to_number_array(tr.find_element(by=By.XPATH, value='td[4]').get_attribute("textContent"))[0]
+                amount_jpy = self.to_number_array(tr.find_element(by=By.XPATH, value='td[4]').get_attribute("textContent"))[1]
                 total_jpy += int(amount_jpy)
                 total_usd += float(amount_usd)
-                amount_usd_delta = self.to_number_array(tr.find_element_by_xpath('td[5]').get_attribute("textContent"))[0]
-                amount_jpy_delta = self.to_number_array(tr.find_element_by_xpath('td[5]').get_attribute("textContent"))[1]
+                amount_usd_delta = self.to_number_array(tr.find_element(by=By.XPATH, value='td[5]').get_attribute("textContent"))[0]
+                amount_jpy_delta = self.to_number_array(tr.find_element(by=By.XPATH, value='td[5]').get_attribute("textContent"))[1]
                 cur_pd.execute((log_date, brand, price_usd, qty, amount_jpy, amount_jpy_delta, amount_usd, amount_usd_delta))
 
             logger.info("inserted sbi_portfolio_detail for {0}".format(log_date))
@@ -212,7 +212,7 @@ WHERE m_log_date = %s
             self.driver.switch_to.window(handle)
             logger.debug(self.driver.title)
             self.wait.until(ec.presence_of_all_elements_located)
-            if len(self.driver.find_elements_by_xpath(xpath)):
+            if len(self.driver.find_elements(by=By.XPATH, value=xpath)):
                 return handle
         raise ValueError('cannot find xpath: {0} in {1} handles'.format(xpath, len(self.driver.window_handles)))
 
@@ -223,13 +223,13 @@ WHERE m_log_date = %s
         #self.wait.until(ec.presence_of_all_elements_located)
         #self.driver.find_element_by_xpath('//*[@id="MAINAREA01"]/div[5]/div/div/div/div/table/tbody/tr/td[3]/ul/li[1]').click() #入金
         self.wait.until(ec.presence_of_all_elements_located)
-        self.driver.find_element_by_xpath('//*[@id="MAINAREA02_780"]/div[4]/ul/form[1]/li/a').click() #住信SBI銀行
+        self.driver.find_element(by=By.XPATH, value='//*[@id="MAINAREA02_780"]/div[4]/ul/form[1]/li/a').click() #住信SBI銀行
         self.wait.until(ec.presence_of_all_elements_located)
         self.send_to_element('//*[@name="FML_TRANSFER_AMOUNT"]', str(ic))
         self.send_to_element('//*[@name="transefer_pass"]', os.environ['SBI_TRADE_PASS'])
-        self.driver.find_element_by_xpath('//*[@id="MAINAREA02_780"]/form/div[2]/ul/li[1]/a/input').click()
+        self.driver.find_element(by=By.XPATH, value='//*[@id="MAINAREA02_780"]/form/div[2]/ul/li[1]/a/input').click()
         self.wait.until(ec.presence_of_all_elements_located)
-        self.driver.find_element_by_xpath('//*[@id="MAINAREA02_780"]/div[4]/ul/li[1]/form/a/input').click()
+        self.driver.find_element(by=By.XPATH, value='//*[@id="MAINAREA02_780"]/div[4]/ul/li[1]/form/a/input').click()
         self.wait.until(ec.presence_of_all_elements_located)
         logger.debug('processing bank...')
         time.sleep(5)
@@ -238,21 +238,21 @@ WHERE m_log_date = %s
         self.driver.switch_to.window(self.get_handle_with_xpath('//*[@id="sbi-login"]'))
         self.title_check('即時決済サービス(ログイン)｜住信SBIネット銀行')
         self.wait.until(ec.presence_of_all_elements_located)
-        self.driver.find_element_by_xpath('//*[@id="sbi-login"]').click()
+        self.driver.find_element(by=By.XPATH, value='//*[@id="sbi-login"]').click()
         time.sleep(1)
         self.send_to_element('//*[@id="userName"]', os.environ['SBI_BANK_ID'])
         self.send_to_element('//*[@id="loginPwdSet"]', os.environ['SBI_BANK_PASS'])
-        self.driver.find_element_by_xpath('//*[@nblabel="ログイン"]').click()
+        self.driver.find_element(by=By.XPATH, value='//*[@nblabel="ログイン"]').click()
         self.wait.until(ec.presence_of_all_elements_located)
         time.sleep(5)
         self.title_check('即時決済サービス(確認)｜住信SBIネット銀行')
         # 出金口座の選択は行わない (デフォルトで普通預金口座)
-        if len(self.driver.find_elements_by_xpath('//*[@id="toriPwd"]')) == 0:
-            self.driver.find_element_by_xpath('/html/body/app/div/ng-component/div/main/ng-component/div/form/section/div/div[3]/p/a/span').click() #キャンセル
+        if len(self.driver.find_elements(by=By.XPATH, value='//*[@id="toriPwd"]')) == 0:
+            self.driver.find_element(by=By.XPATH, value='/html/body/app/div/ng-component/div/main/ng-component/div/form/section/div/div[3]/p/a/span').click() #キャンセル
             self.wait.until(ec.presence_of_all_elements_located)
             raise RuntimeError('failed login to SBIBANK')
         self.send_to_element('//*[@id="toriPwd"]', os.environ['SBI_BANK_TRADE_PASS'])
-        self.driver.find_element_by_xpath('/html/body/app/div/ng-component/div/main/ng-component/section[2]/div/ul/li/nb-button/a').click()
+        self.driver.find_element(by=By.XPATH, value='/html/body/app/div/ng-component/div/main/ng-component/section[2]/div/ul/li/nb-button/a').click()
         time.sleep(5)
         self.wait.until(ec.presence_of_all_elements_located)
         logger.debug('processed bank wallet')
@@ -266,11 +266,11 @@ WHERE m_log_date = %s
         self.wait.until(ec.presence_of_all_elements_located)
         self.driver.get('https://global.sbisec.co.jp/Fpts/kbt/fbOrder/')
         self.wait.until(ec.presence_of_all_elements_located)
-        self.driver.find_element_by_xpath('//*[@id="main"]/div[4]/table[1]/tbody/tr[1]/td/label[1]').click() #買付
-        self.driver.find_element_by_xpath('//*[@id="main"]/div[4]/table[2]/tbody/tr[2]/td/table/tbody/tr[1]/td/div/div[1]/label').click() #指値
-        self.driver.find_element_by_xpath('//*[@id="main"]/div[4]/table[2]/tbody/tr[3]/td/div/label[1]').click() #当日中
-        self.driver.find_element_by_xpath('//*[@id="main"]/div[4]/table[2]/tbody/tr[4]/td/label[1]').click() #一般預かり
-        self.driver.find_element_by_xpath('//*[@id="main"]/div[4]/table[2]/tbody/tr[5]/td/label[2]').click() #円貨
+        self.driver.find_element(by=By.XPATH, value='//*[@id="main"]/div[4]/table[1]/tbody/tr[1]/td/label[1]').click() #買付
+        self.driver.find_element(by=By.XPATH, value='//*[@id="main"]/div[4]/table[2]/tbody/tr[2]/td/table/tbody/tr[1]/td/div/div[1]/label').click() #指値
+        self.driver.find_element(by=By.XPATH, value='//*[@id="main"]/div[4]/table[2]/tbody/tr[3]/td/div/label[1]').click() #当日中
+        self.driver.find_element(by=By.XPATH, value='//*[@id="main"]/div[4]/table[2]/tbody/tr[4]/td/label[1]').click() #一般預かり
+        self.driver.find_element(by=By.XPATH, value='//*[@id="main"]/div[4]/table[2]/tbody/tr[5]/td/label[2]').click() #円貨
         self.send_to_element('//*[@name="ticker"]', item['brand']) #ティッカー
         self.send_to_element('//*[@name="shares"]', "{0}".format(item['qty'])) #口数
         price_dollar = "{0}".format(item['price'].quantize(Decimal('1.'), rounding=ROUND_DOWN))
@@ -278,15 +278,15 @@ WHERE m_log_date = %s
         price_cent = "{0}".format(((item['price'] - item['price'].quantize(Decimal('1.'), rounding=ROUND_DOWN)) * Decimal('100')).quantize(Decimal('1.'), rounding=ROUND_DOWN))
         self.send_to_element('//*[@name="priceCent"]', price_cent)
         self.send_to_element('//*[@name="password"]', os.environ['SBI_TRADE_PASS'])
-        self.driver.find_element_by_xpath('//*[@name="tranConfirm"]').click()
+        self.driver.find_element(by=By.XPATH, value='//*[@name="tranConfirm"]').click()
         self.wait.until(ec.presence_of_all_elements_located)
-        self.driver.find_element_by_xpath('//*[@name="tranAccept"]').click()
+        self.driver.find_element(by=By.XPATH, value='//*[@name="tranAccept"]').click()
         logger.info('bought {0}({1} USD) x {2} = {3} (USD rate: {4})'.format(item['brand'], item['price'], item['qty'], item['price'] * item['qty'], usdrate))
         simpleslack.send_to_slack(':moneybag:{0}(単価${1})を{2}口購入しました(合計金額${3}/レート$1={4}円)'.format(item['brand'], item['price'], item['qty'], item['price'] * item['qty'], usdrate))
 
     def get_inv_capacity(self):
         self.driver.get(self.get_sbi_url('inv_capacity'))
-        return self.to_number(self.driver.find_element_by_xpath('/html/body/div/table/tbody/tr/td[1]/table/tbody/tr[2]/td/form/table[2]/tbody/tr[1]/td[2]/table[10]/tbody/tr/td/table/tbody/tr[17]/td[2]/font').text)
+        return self.to_number(self.driver.find_element(by=By.XPATH, value='/html/body/div/table/tbody/tr/td[1]/table/tbody/tr[2]/td/form/table[2]/tbody/tr[1]/td[2]/table[10]/tbody/tr/td/table/tbody/tr[17]/td[2]/font').text)
 
     def title_check(self, title):
         if self.driver.title != title:
@@ -296,7 +296,7 @@ WHERE m_log_date = %s
         self.driver.execute_script("window.open()")
         self.driver.switch_to.window(self.driver.window_handles[1])
         self.driver.get(link)
-        detail = self.driver.find_element_by_xpath('//*[@id="main"]/div[3]/table/tbody/tr[2]/td/table/tbody/tr/td[3]/font/a').get_attribute("textContent")[:3]
+        detail = self.driver.find_element(by=By.XPATH, value='//*[@id="main"]/div[3]/table/tbody/tr[2]/td/table/tbody/tr/td[3]/font/a').get_attribute("textContent")[:3]
         self.driver.close()
         self.driver.switch_to.window(self.driver.window_handles[0]) 
         return detail == 'ETF'

@@ -5,6 +5,7 @@ from wnf.prepare import PreparingCursor
 
 from selenium import webdriver 
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.remote.webelement import WebElement, By
 
 import os, datetime, time, pytz, requests
 
@@ -74,7 +75,7 @@ class Scraper():
         print(html)
 
     def send_to_element(self, xpath, keys):
-        element = self.driver.find_element_by_xpath(xpath)
+        element = self.driver.find_element(by=By.XPATH, value=xpath)
         element.clear()
         logger.debug("[send_to_element] " + xpath)
         element.send_keys(keys)
