@@ -85,11 +85,13 @@ class WealthNavi(Scraper):
                 cur_pd.execute((log_date, brand, jpy, jpy_delta, usd, usd_delta, price_usd, qty))
                 logger.debug("inserting wn_portfolio_detail for {0},{1},{2},{3},{4},{5},{6},{7}".format(log_date, brand, jpy, jpy_delta, usd, usd_delta, price_usd, qty))
             logger.info("inserted wn_portfolio_detail for {0}".format(log_date))
-
-            total_jpy = self.to_number(self.driver.find_element_by_xpath('//*[@id="content"]/div/div/section[2]/div/div/div[1]/div[1]/dl[1]/dt').get_attribute("textContent"))
-            total_usd = self.to_number(self.driver.find_element_by_xpath('//*[@id="content"]/div/div/section[2]/div/div/div[1]/div[1]/dl[2]/dt').get_attribute("textContent"))
             usdrate = self.driver.find_element_by_xpath('//*[@id="assets-class-data"]/caption/span[1]').get_attribute("textContent")
-            
+    
+            self.driver.get('https://invest.wealthnavi.com/service')
+            logger.debug("title: {0}".format(self.driver.title))
+            total_jpy = self.to_number(self.driver.find_element_by_xpath('//*[@id="content"]/div/div[3]/section/div/div/div[1]/div[1]/dl[1]/dt/span').get_attribute("textContent"))
+            total_usd = self.to_number(self.driver.find_element_by_xpath('//*[@id="content"]/div/div[3]/section/div/div/div[1]/div[1]/dl[2]/dt/span').get_attribute("textContent"))
+
             self.driver.get('https://invest.wealthnavi.com/service/transaction')
             logger.debug("title: {0}".format(self.driver.title))
 
