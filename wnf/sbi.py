@@ -28,6 +28,7 @@ class SbiTrade(Scraper):
         return self.sbi_core_url + path_dict[text]
         
     def login(self):
+        self.cap_cache = {}
         self.sbi_core_url = 'https://www.sbisec.co.jp/ETGate/'
         if not 'SBI_ID' in os.environ or not 'SBI_PASS' or not 'SBI_TRADE_PASS' in os.environ:
             raise ValueError("env SBI_ID and/or SBI_PASS and/or SBI_TRADE_PASS are not found.")
@@ -262,13 +263,25 @@ WHERE m_log_date = %s
 
     def buy(self, item, usdrate):
         logger.info('buy {0}({1} USD) x {2} = {3} (USD rate: {4})'.format(item['brand'], item['price'], item['qty'], item['price'] * item['qty'], usdrate))
+        nisa_cap = int(self.get_nisa_capacity())
+        total_price_yen = int(item['price'] * item['qty'] * usdrate)
+        logger.info('NISA cap {0} yen <-> total price {1} yen'.format(nisa_cap, total_price_yen))
+
         self.driver.get(self.get_sbi_url('global_trade'))
         self.wait.until(ec.presence_of_all_elements_located)
         self.driver.get('https://global.sbisec.co.jp/trade/spot/us') #US株買付ページ
         self.wait.until(ec.presence_of_all_elements_located)
         self.driver.find_element(by=By.XPATH, value='//*[@id="trade-radio"]/label[@for="buy"]').click() #買付ボタン
         self.driver.find_element(by=By.XPATH, value='//*[@id="trade-input"]//label[@for="today"]').click() #当日中ボタン
-        self.driver.find_element(by=By.XPATH, value='//*[@id="deposit-radio-group"]/label[@for="nisa"]').click() #NISA預かり
+
+        wallet = 'UNKNOWN'
+        if nisa_cap >= total_price_yen:
+            self.driver.find_element(by=By.XPATH, value='//*[@id="deposit-radio-group"]/label[@for="nisa"]').click() #NISA預かり
+            wallet = 'NISA'
+        else:
+            self.driver.find_element(by=By.XPATH, value='//*[@id="deposit-radio-group"]/label[@for="specific"]').click() #特定預かり
+            wallet = '特定'
+            
         self.driver.find_element(by=By.XPATH, value='//*[@id="payment-radio-group"]/label[@for="yen"]').click() #円貨
         self.send_to_element('//*[@id="stock-ticker"]', item['brand']) #ティッカー
         self.send_to_element('//*[@id="trade-input"]/div[1]/div[2]/div/div/div/input', "{0}".format(item['qty'])) #口数
@@ -280,11 +293,26 @@ WHERE m_log_date = %s
         self.wait.until(ec.presence_of_all_elements_located)
         self.driver.find_element(by=By.XPATH, value='//*[@id="detail"]/div[2]/div[1]/div/button').click()
         logger.info('bought {0}({1} USD) x {2} = {3} (USD rate: {4})'.format(item['brand'], item['price'], item['qty'], item['price'] * item['qty'], usdrate))
-        simpleslack.send_to_slack(':moneybag:{0}(単価${1})を{2}口購入しました(合計金額${3}/レート$1={4}円)'.format(item['brand'], item['price'], item['qty'], item['price'] * item['qty'], usdrate))
+        simpleslack.send_to_slack(':moneybag:{0}(単価${1})を{2}口購入しました(合計金額${3}/レート$1={4}円, {5}預り)'.format(item['brand'], item['price'], item['qty'], item['price'] * item['qty'], usdrate, wallet))
+
+
+    def get_capacity_and_cache(self, kind:str):
+        self.driver.get(self.get_sbi_url('inv_capacity'))
+        self.cap_cache['inv'] = self.to_number(self.driver.find_element(by=By.XPATH, value='/html/body/div/table/tbody/tr/td[1]/table/tbody/tr[2]/td/form/table[2]/tbody/tr[1]/td[2]/table[10]/tbody/tr/td/table/tbody/tr[17]/td[2]/font').text)
+        self.cap_cache['nisa'] = self.to_number(self.driver.find_element(by=By.XPATH, value='/html/body/div[1]/table/tbody/tr/td[1]/table/tbody/tr[2]/td/form/table[2]/tbody/tr[1]/td[2]/table[8]/tbody/tr/td[1]/table/tbody/tr/td[2]/div').text)
+        return self.cap_cache[kind]
 
     def get_inv_capacity(self):
-        self.driver.get(self.get_sbi_url('inv_capacity'))
-        return self.to_number(self.driver.find_element(by=By.XPATH, value='/html/body/div/table/tbody/tr/td[1]/table/tbody/tr[2]/td/form/table[2]/tbody/tr[1]/td[2]/table[10]/tbody/tr/td/table/tbody/tr[17]/td[2]/font').text)
+        if 'inv' in self.cap_cache:
+            return self.cap_cache['inv']
+        else:
+            return self.get_capacity_and_cache('inv')
+
+    def get_nisa_capacity(self):
+        if 'nisa' in self.cap_cache:
+            return self.cap_cache['nisa']
+        else:
+            return self.get_capacity_and_cache('nisa')
 
     def title_check(self, title):
         if self.driver.title != title:
