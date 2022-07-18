@@ -133,7 +133,7 @@ class SbiTrade(Scraper):
                 cur_pd.execute((log_date, brand, price_usd, qty, amount_jpy, amount_jpy_delta, amount_usd, amount_usd_delta))
 
             logger.info("inserted sbi_portfolio_detail for {0}".format(log_date))
-            usdrate = self.driver.find_element_by_xpath('//*[@id="id2"]/../../../../following-sibling::table/tbody/tr[2]/td[2]').text
+            usdrate = self.driver.find_element(by=By.XPATH, value='//*[@id="id2"]/../../../../following-sibling::table/tbody/tr[2]/td[2]').text
             cur_p.execute((log_date, usdrate, total_jpy, total_usd, inv_capacity_jpy))
 
             logger.info("inserted sbi_portfolio for {0}".format(log_date))
@@ -264,23 +264,21 @@ WHERE m_log_date = %s
         logger.info('buy {0}({1} USD) x {2} = {3} (USD rate: {4})'.format(item['brand'], item['price'], item['qty'], item['price'] * item['qty'], usdrate))
         self.driver.get(self.get_sbi_url('global_trade'))
         self.wait.until(ec.presence_of_all_elements_located)
-        self.driver.get('https://global.sbisec.co.jp/Fpts/kbt/fbOrder/')
+        self.driver.get('https://global.sbisec.co.jp/trade/spot/us') #US株買付ページ
         self.wait.until(ec.presence_of_all_elements_located)
-        self.driver.find_element(by=By.XPATH, value='//*[@id="main"]/div[4]/table[1]/tbody/tr[1]/td/label[1]').click() #買付
-        self.driver.find_element(by=By.XPATH, value='//*[@id="main"]/div[4]/table[2]/tbody/tr[2]/td/table/tbody/tr[1]/td/div/div[1]/label').click() #指値
-        self.driver.find_element(by=By.XPATH, value='//*[@id="main"]/div[4]/table[2]/tbody/tr[3]/td/div/label[1]').click() #当日中
-        self.driver.find_element(by=By.XPATH, value='//*[@id="main"]/div[4]/table[2]/tbody/tr[4]/td/label[1]').click() #一般預かり
-        self.driver.find_element(by=By.XPATH, value='//*[@id="main"]/div[4]/table[2]/tbody/tr[5]/td/label[2]').click() #円貨
-        self.send_to_element('//*[@name="ticker"]', item['brand']) #ティッカー
-        self.send_to_element('//*[@name="shares"]', "{0}".format(item['qty'])) #口数
-        price_dollar = "{0}".format(item['price'].quantize(Decimal('1.'), rounding=ROUND_DOWN))
-        self.send_to_element('//*[@name="priceDollar"]', price_dollar)
-        price_cent = "{0}".format(((item['price'] - item['price'].quantize(Decimal('1.'), rounding=ROUND_DOWN)) * Decimal('100')).quantize(Decimal('1.'), rounding=ROUND_DOWN))
-        self.send_to_element('//*[@name="priceCent"]', price_cent)
-        self.send_to_element('//*[@name="password"]', os.environ['SBI_TRADE_PASS'])
-        self.driver.find_element(by=By.XPATH, value='//*[@name="tranConfirm"]').click()
+        self.driver.find_element(by=By.XPATH, value='//*[@id="trade-radio"]/label[@for="buy"]').click() #買付ボタン
+        self.driver.find_element(by=By.XPATH, value='//*[@id="trade-input"]//label[@for="today"]').click() #当日中ボタン
+        self.driver.find_element(by=By.XPATH, value='//*[@id="deposit-radio-group"]/label[@for="nisa"]').click() #NISA預かり
+        self.driver.find_element(by=By.XPATH, value='//*[@id="payment-radio-group"]/label[@for="yen"]').click() #円貨
+        self.send_to_element('//*[@id="stock-ticker"]', item['brand']) #ティッカー
+        self.send_to_element('//*[@id="trade-input"]/div[1]/div[2]/div/div/div/input', "{0}".format(item['qty'])) #口数
+        self.driver.find_element(by=By.XPATH, value='//*[@id="order-form-price-selector"]//label[@for="limit"]').click() #指値ボタン
+        price_dollar = "{:.2f}".format(item['price'])
+        self.send_to_element('//*[@id="order-form-price-selector"]/div[1]/div/div/div/div/div/input', price_dollar) # 指値
+        self.send_to_element('//*[@id="trade-password"]', os.environ['SBI_TRADE_PASS'])
+        self.driver.find_element(by=By.XPATH, value='//*[@id="password-button"]').click()
         self.wait.until(ec.presence_of_all_elements_located)
-        self.driver.find_element(by=By.XPATH, value='//*[@name="tranAccept"]').click()
+        self.driver.find_element(by=By.XPATH, value='//*[@id="detail"]/div[2]/div[1]/div/button').click()
         logger.info('bought {0}({1} USD) x {2} = {3} (USD rate: {4})'.format(item['brand'], item['price'], item['qty'], item['price'] * item['qty'], usdrate))
         simpleslack.send_to_slack(':moneybag:{0}(単価${1})を{2}口購入しました(合計金額${3}/レート$1={4}円)'.format(item['brand'], item['price'], item['qty'], item['price'] * item['qty'], usdrate))
 
@@ -296,10 +294,11 @@ WHERE m_log_date = %s
         self.driver.execute_script("window.open()")
         self.driver.switch_to.window(self.driver.window_handles[1])
         self.driver.get(link)
-        detail = self.driver.find_element(by=By.XPATH, value='//*[@id="main"]/div[3]/table/tbody/tr[2]/td/table/tbody/tr/td[3]/font/a').get_attribute("textContent")[:3]
+        # <button data-ga-tab="etfInformation" type="button" class="tab-item">ETF情報</button>        
+        etfexists = len(self.driver.find_elements(by=By.XPATH, value='//*[@data-ga-tab="etfInformation"]'))
         self.driver.close()
         self.driver.switch_to.window(self.driver.window_handles[0]) 
-        return detail == 'ETF'
+        return etfexists > 0
 
     def to_number(self, text):
         return text.replace(',','').replace(' ','').replace('\n',' ').replace('+','')

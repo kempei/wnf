@@ -90,8 +90,8 @@ class WealthNavi(Scraper):
     
             self.driver.get('https://invest.wealthnavi.com/service')
             logger.debug("title: {0}".format(self.driver.title))
-            total_jpy = self.to_number(self.driver.find_element_by_xpath('//*[@id="content"]/div/div[3]/section/div/div/div[1]/div[1]/dl[1]/dt/span').get_attribute("textContent"))
-            total_usd = self.to_number(self.driver.find_element_by_xpath('//*[@id="content"]/div/div[3]/section/div/div/div[1]/div[1]/dl[2]/dt/span').get_attribute("textContent"))
+            total_jpy = self.to_number(self.driver.find_element(by=By.XPATH, value='//*[@id="content"]/div/div[3]/section/div/div/div[1]/div[1]/dl[1]/dt/span').get_attribute("textContent"))
+            total_usd = self.to_number(self.driver.find_element(by=By.XPATH, value='//*[@id="content"]/div/div[3]/section/div/div/div[1]/div[1]/dl[2]/dt/span').get_attribute("textContent"))
 
             self.driver.get('https://invest.wealthnavi.com/service/transaction')
             logger.debug("title: {0}".format(self.driver.title))
