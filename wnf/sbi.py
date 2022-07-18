@@ -264,7 +264,7 @@ WHERE m_log_date = %s
     def buy(self, item, usdrate):
         logger.info('buy {0}({1} USD) x {2} = {3} (USD rate: {4})'.format(item['brand'], item['price'], item['qty'], item['price'] * item['qty'], usdrate))
         nisa_cap = int(self.get_nisa_capacity())
-        total_price_yen = int(item['price'] * item['qty'] * usdrate)
+        total_price_yen = int(item['price'] * item['qty'] * usdrate)+1
         logger.info('NISA cap {0} yen <-> total price {1} yen'.format(nisa_cap, total_price_yen))
 
         self.driver.get(self.get_sbi_url('global_trade'))
