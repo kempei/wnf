@@ -108,8 +108,10 @@ class SbiTrade(Scraper):
             if len(trs) == 0:
                 self.print_html()
                 raise AssertionError('no information at bondlist')
-            total_jpy = 0
-            total_usd = 0
+            total_jpy:int = 0
+            total_usd:int = 0
+            
+            data_cache:dict = dict()
             for tr in trs:
                 if tr.get_attribute('class') != 'mtext':
                     continue
@@ -119,18 +121,29 @@ class SbiTrade(Scraper):
                     logger.debug('skipped brand: {0}'.format(brand))
                     continue
                 qty_text = tr.find_element(by=By.XPATH, value='td[2]').get_attribute("textContent")
+                qty:int = 0
                 if '（' in qty_text:
                     qty_array = self.to_number_array(qty_text)
                     qty = int(qty_array[0]) - int(qty_array[1])
                 else:
-                    qty = self.to_number(qty_text)
-                price_usd = self.to_number_array(tr.find_element(by=By.XPATH, value='td[3]').get_attribute("textContent"))[1]
-                amount_usd = self.to_number_array(tr.find_element(by=By.XPATH, value='td[4]').get_attribute("textContent"))[0]
-                amount_jpy = self.to_number_array(tr.find_element(by=By.XPATH, value='td[4]').get_attribute("textContent"))[1]
-                total_jpy += int(amount_jpy)
-                total_usd += float(amount_usd)
-                amount_usd_delta = self.to_number_array(tr.find_element(by=By.XPATH, value='td[5]').get_attribute("textContent"))[0]
-                amount_jpy_delta = self.to_number_array(tr.find_element(by=By.XPATH, value='td[5]').get_attribute("textContent"))[1]
+                    qty = int(self.to_number(qty_text))
+                price_usd:float = float(self.to_number_array(tr.find_element(by=By.XPATH, value='td[3]').get_attribute("textContent"))[1])
+                amount_usd:float = float(self.to_number_array(tr.find_element(by=By.XPATH, value='td[4]').get_attribute("textContent"))[0])
+                amount_jpy:int = int(self.to_number_array(tr.find_element(by=By.XPATH, value='td[4]').get_attribute("textContent"))[1])
+                total_jpy += amount_jpy
+                total_usd += amount_usd
+                amount_usd_delta:float = float(self.to_number_array(tr.find_element(by=By.XPATH, value='td[5]').get_attribute("textContent"))[0])
+                amount_jpy_delta:float = float(self.to_number_array(tr.find_element(by=By.XPATH, value='td[5]').get_attribute("textContent"))[1])
+                
+                # 一般/特定/NISA の3つの口座で同じブランドとなることがあるため重複は足し込んでおく
+                if brand in data_cache:
+                    (price_usd_cache, qty_cache, amount_jpy_cache, amount_jpy_delta_cache, amount_usd_cache, amount_usd_delta_cache) = data_cache[brand]
+                    data_cache[brand] = (price_usd_cache + price_usd, qty_cache + qty, amount_jpy_cache + amount_jpy, amount_jpy_delta_cache + amount_jpy_delta, amount_usd_cache + amount_usd, amount_usd_delta_cache + amount_usd_delta)
+                else:
+                    data_cache[brand] = (price_usd, qty, amount_jpy, amount_jpy_delta, amount_usd, amount_usd_delta)
+            
+            for brand in data_cache:
+                (price_usd, qty, amount_jpy, amount_jpy_delta, amount_usd, amount_usd_delta) = data_cache[brand]
                 cur_pd.execute((log_date, brand, price_usd, qty, amount_jpy, amount_jpy_delta, amount_usd, amount_usd_delta))
 
             logger.info("inserted sbi_portfolio_detail for {0}".format(log_date))
