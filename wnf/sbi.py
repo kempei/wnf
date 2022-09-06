@@ -237,7 +237,7 @@ WHERE m_log_date = %s
         #self.wait.until(ec.presence_of_all_elements_located)
         #self.driver.find_element_by_xpath('//*[@id="MAINAREA01"]/div[5]/div/div/div/div/table/tbody/tr/td[3]/ul/li[1]').click() #入金
         self.wait.until(ec.presence_of_all_elements_located)
-        self.driver.find_element(by=By.XPATH, value='//*[@id="MAINAREA02_780"]/div[4]/ul/form[1]/li/a').click() #住信SBI銀行
+        self.driver.find_element(by=By.XPATH, value='//a[@href="javascript:document.SSNB.submit();"]').click() #住信SBI銀行
         self.wait.until(ec.presence_of_all_elements_located)
         self.send_to_element('//*[@name="FML_TRANSFER_AMOUNT"]', str(ic))
         self.send_to_element('//*[@name="transefer_pass"]', os.environ['SBI_TRADE_PASS'])
