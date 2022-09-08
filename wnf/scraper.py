@@ -79,6 +79,7 @@ class Scraper():
         element = self.driver.find_element(by=By.XPATH, value=xpath)
         element.clear()
         logger.debug("[send_to_element] " + xpath)
+        time.sleep(0.5)
         element.send_keys(keys)
 
     def send_to_element_direct(self, element, keys):
