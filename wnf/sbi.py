@@ -243,7 +243,7 @@ WHERE m_log_date = %s
         self.send_to_element('//*[@name="transefer_pass"]', os.environ['SBI_TRADE_PASS'])
         self.driver.find_element(by=By.XPATH, value='//*[@id="MAINAREA02_780"]/form/div[2]/ul/li[1]/a/input').click()
         self.wait.until(ec.presence_of_all_elements_located)
-        self.driver.find_element(by=By.XPATH, value='//*[@id="MAINAREA02_780"]/div[4]/ul/li[1]/form/a/input').click()
+        self.driver.find_element(by=By.XPATH, value='//*[@id="MAINAREA02_780"]/div[4]/ul/li[1]/form/a/input').click() # 振込指示
         self.wait.until(ec.presence_of_all_elements_located)
         logger.debug('processing bank...')
         time.sleep(5)
@@ -252,7 +252,8 @@ WHERE m_log_date = %s
         self.driver.switch_to.window(self.get_handle_with_xpath('//*[@id="sbi-login"]'))
         self.title_check('即時決済サービス(ログイン)｜住信SBIネット銀行')
         self.wait.until(ec.presence_of_all_elements_located)
-        self.driver.find_element(by=By.XPATH, value='//*[@id="sbi-login"]').click()
+        
+        self.driver.find_element(by=By.XPATH, value='/html/body/app/div/ng-component/div/main/ng-component/div/form/section/div/div/nb-gethtml-dynamic/div/div[1]/label/div/div/div/ul/li/div/ul').click()
         time.sleep(1)
         self.send_to_element('//*[@id="userName"]', os.environ['SBI_BANK_ID'])
         self.send_to_element('//*[@id="loginPwdSet"]', os.environ['SBI_BANK_PASS'])
