@@ -255,7 +255,7 @@ WHERE m_log_date = %s
         
         self.driver.find_element(by=By.XPATH, value='/html/body/app/div/ng-component/div/main/ng-component/div/form/section/div/div/nb-gethtml-dynamic/div/div[1]/label/div/div/div/ul/li/div/ul').click()
         time.sleep(1)
-        self.send_to_element('//*[@id="userName"]', os.environ['SBI_BANK_ID'])
+        self.send_to_element('//*[@id="userNameNewLogin"]', os.environ['SBI_BANK_ID'])
         self.send_to_element('//*[@id="loginPwdSet"]', os.environ['SBI_BANK_PASS'])
         self.driver.find_element(by=By.XPATH, value='//*[@nblabel="ログイン"]').click()
         self.wait.until(ec.presence_of_all_elements_located)
