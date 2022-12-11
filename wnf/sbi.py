@@ -314,8 +314,9 @@ WHERE m_log_date = %s
 
     def get_capacity_and_cache(self, kind:str):
         self.driver.get(self.get_sbi_url('inv_capacity'))
-        self.cap_cache['inv'] = self.to_number(self.driver.find_element(by=By.XPATH, value='//table/tbody/tr/td[1]/table/tbody/tr[2]/td/form/table[2]/tbody/tr[1]/td[2]/table[10]/tbody/tr/td/table/tbody/tr[17]/td[2]/font').text)
-        self.cap_cache['nisa'] = self.to_number(self.driver.find_element(by=By.XPATH, value='//table/tbody/tr/td[1]/table/tbody/tr[2]/td/form/table[2]/tbody/tr[1]/td[2]/table[8]/tbody/tr/td[1]/table/tbody/tr/td[2]/div').text)
+        self.wait.until(ec.presence_of_all_elements_located)
+        self.cap_cache['inv'] = self.to_number(self.driver.find_element(by=By.XPATH, value='//td[@class="mtext-db"][text()="買付余力"][@align="center"]/following-sibling::td[1]/font').text)
+        self.cap_cache['nisa'] = self.to_number(self.driver.find_element(by=By.XPATH, value='//table[@width=350]/tbody/tr[1]/td[2]/div').text)
         return self.cap_cache[kind]
 
     def get_inv_capacity(self):
