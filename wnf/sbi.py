@@ -38,9 +38,12 @@ class SbiTrade(Scraper):
         if not 'SBI_BANK_ID' in os.environ or not 'SBI_BANK_PASS' or not 'SBI_BANK_TRADE_PASS' in os.environ:
             raise ValueError("env SBI_BANK_ID and/or SBI_BANK_PASS and/or SBI_BANK_TRADE_PASS are not found.")
 
+        logger.info('getting...start: ' + self.sbi_core_url)
         self.driver.get(self.sbi_core_url)
         time.sleep(5)
         self.wait.until(ec.presence_of_all_elements_located)
+        logger.info('getting...end: ' + self.sbi_core_url)
+        
         
         self.send_to_element('//*[@name="user_id"]', sbi_id)
         self.send_to_element('//*[@name="user_password"]', sbi_pass)

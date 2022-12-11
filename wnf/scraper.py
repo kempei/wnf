@@ -21,7 +21,7 @@ class Scraper():
         self.conn = psycopg2.connect(dsn)
         
     def init(self):
-        logger.info("selenium initializing...")
+        logger.info("selenium initializing...start")
 
         if not 'ALPHAVANTAGE_API_KEY' in os.environ:
             raise ValueError("env ALPHAVANTAGE_API_KEY is not found.")
@@ -41,8 +41,9 @@ class Scraper():
         options.add_argument("--blink-settings=imagesEnabled=false")
         options.add_argument('--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36')
         self.driver = webdriver.Chrome(options=options)
-        self.driver.implicitly_wait(10)
-        self.wait = WebDriverWait(self.driver, 10)
+        self.driver.implicitly_wait(3)
+        self.wait = WebDriverWait(self.driver, 3)
+        logger.info("selenium initializing...end")
 
     def close(self):
         try:

@@ -19,14 +19,19 @@ from decimal import Decimal
 class WealthNavi(Scraper):
 
     def login(self):
+        logger.info("wnf login start: open window...")
         self.driver.execute_script("window.open()")
+        logger.info("opened window.")
         if not 'WN_ID' in os.environ or not 'WN_PASS' in os.environ:
             raise ValueError("env WN_ID and/or WN_PASS are not found.")
         wn_id = os.environ['WN_ID']
         wn_pass = os.environ['WN_PASS']
         
-        self.driver.get('https://invest.wealthnavi.com')
+        logger.info("getting start: " + 'https://invest.wealthnavi.com/login')
+        self.driver.get('https://invest.wealthnavi.com/login')
+        logger.info("getting...: " + 'https://invest.wealthnavi.com/login')
         self.wait.until(ec.presence_of_all_elements_located)
+        logger.info("getting done: " + 'https://invest.wealthnavi.com/login')
         
         self.send_to_element('//*[@id="username"]', wn_id)
         self.send_to_element('//*[@id="password"]', wn_pass)
