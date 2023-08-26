@@ -14,6 +14,9 @@ phases:
       - AWS_ACCESS_KEY_ID=`echo ${AWS_CRED} | jq -r .AccessKeyId`
       - AWS_SECRET_ACCESS_KEY=`echo ${AWS_CRED} | jq -r .SecretAccessKey`
       - AWS_SESSION_TOKEN=`echo ${AWS_CRED} | jq -r .Token`
+      - echo key = ${AWS_ACCESS_KEY_ID}
+      - echo access_key = ${AWS_SECRET_ACCESS_KEY}
+      - echo token = ${AWS_SESSION_TOKEN}
       - echo Logging in to Amazon ECR...
       - aws --version
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
@@ -39,7 +42,7 @@ phases:
         -e AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
         -e AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
         -e AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN} \
-        -t $IMAGE_REPO_NAME:latest python -m unittest tests/test_scraper.py
+        $IMAGE_REPO_NAME:latest python -m unittest tests/test_scraper.py
       - echo Test completed on `date`
       - echo Pushing the Docker image...
       - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
