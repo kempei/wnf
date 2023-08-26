@@ -5,23 +5,8 @@ env:
   parameter-store:
     DOCKERHUB_USER: "dockerhub_user"
     DOCKERHUB_PASS: "dockerhub_pass"
-    WN_ID: "wn_id"
-    WN_PASS: "wn_pass"
-    SBI_ID: "sbi_id"
-    SBI_PASS: "sbi_pass"
-    SBI_TRADE_PASS: "sbi_trade_pass"
-    SBI_BANK_ID: "sbi_bank_id"
-    SBI_BANK_PASS: "sbi_bank_pass"
-    SBI_BANK_TRADE_PASS: "sbi_bank_trade_pass"
-    DB_PASS: "db_pass"
-    DB_ENDPOINT: "db_endpoint"
-    ALPHAVANTAGE_API_KEY: "alpha_vantage_api_key"
-    SLACK_CLIENT_SECRET: "slack_client_secret"
-    SLACK_CHANNEL: "slack_channel"
   variables:
-    DB_USER: "postgres"
     IMAGE_REPO_NAME: "wnf"
-    DOCKERENV: "-e WN_ID -e WN_PASS -e SBI_ID -e SBI_PASS -e SBI_TRADE_PASS -e SBI_BANK_ID -e SBI_BANK_PASS -e SBI_BANK_TRADE_PASS -e DB_USER -e DB_PASS -e DB_ENDPOINT -e ALPHAVANTAGE_API_KEY -e SLACK_CLIENT_SECRET -e SLACK_CHANNEL -e SKIP_WN"
 phases:
   pre_build:
     commands:
@@ -49,9 +34,9 @@ phases:
   post_build:
     commands:
       - echo Build completed on `date`
-      #- echo Testing Docker image...
-      #- docker run $DOCKERENV -t $IMAGE_REPO_NAME:latest python -m unittest discover tests
-      #- echo Test completed on `date`
+      - echo Testing Docker image...
+      - docker run $DOCKERENV -t $IMAGE_REPO_NAME:latest python -m unittest tests/test_scraper.py
+      - echo Test completed on `date`
       - echo Pushing the Docker image...
       - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
       - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:latest

@@ -34,6 +34,7 @@ RUN apk add --no-cache --virtual .build-deps \
     rm -Rf /root/.cache/
 
 COPY wnf/ $project_dir/wnf/
+COPY tests/ $project_dir/tests/
 ADD run.sh $project_dir/
 
 CMD [ "/tmp/work/run.sh" ]
