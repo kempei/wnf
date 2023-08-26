@@ -10,11 +10,10 @@ env:
 phases:
   pre_build:
     commands:
-      #- ASSUME_ROLE_ARN="arn:aws:iam::$AWS_ACCOUNT_ID:role/Test$IMAGE_REPO_NAME"
-      #- export TEMP_ROLE=$(aws sts assume-role --role-arn $ASSUME_ROLE_ARN --role-session-name test)
-      #- export AWS_ACCESS_KEY_ID=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.AccessKeyId')
-      #- export AWS_SECRET_ACCESS_KEY=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SecretAccessKey')
-      #- export AWS_SESSION_TOKEN=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SessionToken')
+      - AWS_CRED=`curl http://169.254.170.2${AWS_CONTAINER_CREDENTIALS_RELATIVE_URI}`
+      - AWS_ACCESS_KEY_ID=`echo ${AWS_CRED} | jq -r .AccessKeyId`
+      - AWS_SECRET_ACCESS_KEY=`echo ${AWS_CRED} | jq -r .SecretAccessKey`
+      - AWS_SESSION_TOKEN=`echo ${AWS_CRED} | jq -r .Token`
       - echo Logging in to Amazon ECR...
       - aws --version
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
@@ -35,7 +34,11 @@ phases:
     commands:
       - echo Build completed on `date`
       - echo Testing Docker image...
-      - docker run -t $IMAGE_REPO_NAME:latest python -m unittest tests/test_scraper.py
+      - docker run \
+        -e AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
+        -e AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
+        -e AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN} \
+        -t $IMAGE_REPO_NAME:latest python -m unittest tests/test_scraper.py
       - echo Test completed on `date`
       - echo Pushing the Docker image...
       - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
