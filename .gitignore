@@ -3,4 +3,8 @@ Pipfile
 .git
 .vscode
 *.env
+env.json
 __pycache__
+.pytest_cache
+data
+wnf.db
