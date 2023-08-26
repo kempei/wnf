@@ -88,7 +88,7 @@ class SbiTrade(DBScraper):
         # 買付余力
         inv_capacity_jpy = self.get_inv_capacity()
 
-        # 外貨建て口座 - 保有証券 / NISA は見ていない
+        # 外貨建て口座 - 保有証券
         self.driver.get(self.get_sbi_url("wallet"))  # 口座へ移動
         self.driver.get(self.direct_path_dict["bondlist"])
         trs = self.driver.find_elements(by=By.XPATH, value='//*[@id="id2"]/tbody/tr')
@@ -150,7 +150,23 @@ class SbiTrade(DBScraper):
 
         self.commit_transaction()
 
+    def __exist_current_orders(self):
+        self.driver.get("https://global.sbisec.co.jp/refer/us/stock")
+        self.wait.until(ec.presence_of_all_elements_located)
+        lis = self.driver.find_elements(by=By.XPATH, value='//div[@id="refer-stock"]/div/ul/li')
+        if len(lis) == 0:
+            return False
+        for li in lis:
+            status_text = li.find_element(by=By.XPATH, value="div[2]").get_attribute("textContent")
+            if status_text == "注文中":
+                return True
+        return False
+
     def trade(self):
+        if self.__exist_current_orders():
+            logger.info("already ordered. no orders in this transaction.")
+            return
+
         logger.info("starting sbi trade")
         log_date = self.get_local_date()
 
@@ -159,6 +175,7 @@ FROM (SELECT COUNT(*) FROM wn_portfolio where log_date = ?) w
    , (SELECT COUNT(*) FROM sbi_portfolio where log_date = ?) s"""
         cursor = self.conn.cursor()
         rows = list(cursor.execute(check_sql, (log_date.isoformat(), log_date.isoformat())))
+        logger.debug(f"WN count = {rows[0][0]}, SBI count = {rows[0][1]}")
         assert int(rows[0][0]) == 1 and int(rows[0][1]) == 1
 
         diff_sql = """SELECT *
@@ -264,27 +281,40 @@ WHERE m_log_date = ?
         simpleslack.send_to_slack(":moneybag:買付余力を増やしました({0}円)".format(ic))
 
     def buy(self, item, usdrate):
-        logger.info(f'buy {item["brand"],}({item["price"]} USD) x {item["qty"]} = {item["price"] * item["qty"]} (USD rate: {usdrate})')
+        # NISA 投資枠の確認
+        self.driver.get("https://global.sbisec.co.jp/account/summary")
+        self.wait.until(ec.presence_of_all_elements_located)
+        nisa_capacity = int(self.to_number(self.driver.find_element(by=By.XPATH, value='//ul[@id="nisa-buy-table"]/li/div[2]').get_attribute("textContent")))
+        yen_total_limit = int(item["price"] * item["qty"] * usdrate) + 1
+
+        # 購入
+        logger.info(f'buy {item["brand"],}({item["price"]} USD) x {item["qty"]} = {item["price"] * item["qty"]} (USD rate: {usdrate}) = {yen_total_limit}円 / NISA残り枠 {nisa_capacity}円')
         self.driver.get(self.get_sbi_url("global_trade"))
         self.wait.until(ec.presence_of_all_elements_located)
-        self.driver.get("https://global.sbisec.co.jp/Fpts/kbt/fbOrder/")
+        self.driver.get("https://global.sbisec.co.jp/trade/spot/us")
         self.wait.until(ec.presence_of_all_elements_located)
-        self.driver.find_element(by=By.XPATH, value='//*[@id="main"]/div[4]/table[1]/tbody/tr[1]/td/label[1]').click()  # 買付
-        self.driver.find_element(by=By.XPATH, value='//*[@id="main"]/div[4]/table[2]/tbody/tr[2]/td/table/tbody/tr[1]/td/div/div[1]/label').click()  # 指値
-        self.driver.find_element(by=By.XPATH, value='//*[@id="main"]/div[4]/table[2]/tbody/tr[3]/td/div/label[1]').click()  # 当日中
-        self.driver.find_element(by=By.XPATH, value='//*[@id="main"]/div[4]/table[2]/tbody/tr[4]/td/label[1]').click()  # 一般預かり
-        self.driver.find_element(by=By.XPATH, value='//*[@id="main"]/div[4]/table[2]/tbody/tr[5]/td/label[2]').click()  # 円貨
-        self.send_to_element('//*[@name="ticker"]', item["brand"])  # ティッカー
-        self.send_to_element('//*[@name="shares"]', "{0}".format(item["qty"]))  # 口数
-        price_decimal = Decimal(item["price"])
-        price_dollar = "{0}".format(price_decimal.quantize(Decimal("1."), rounding=ROUND_DOWN))
-        self.send_to_element('//*[@name="priceDollar"]', price_dollar)
-        price_cent = "{0}".format(((price_decimal - price_decimal.quantize(Decimal("1."), rounding=ROUND_DOWN)) * Decimal("100")).quantize(Decimal("1."), rounding=ROUND_DOWN))
-        self.send_to_element('//*[@name="priceCent"]', price_cent)
-        self.send_to_element('//*[@name="password"]', self.config("sbi-trade-pass"))
-        self.driver.find_element(by=By.XPATH, value='//*[@name="tranConfirm"]').click()
+
+        self.driver.find_element(by=By.XPATH, value='//label[@for="buy"]').click()  # 現物買付
+        self.driver.find_element(by=By.XPATH, value='//label[@for="limit"]').click()  # 指値
+        self.send_to_element('//label[@for="limit"]/../div//input', str(item["price"]))  # 指値値
+
+        self.driver.find_element(by=By.XPATH, value='//label[@for="today"]').click()  # 当日中
+
+        if nisa_capacity >= yen_total_limit:
+            self.driver.find_element(by=By.XPATH, value='//label[@for="nisa"]').click()  # NISA預かり
+        else:
+            self.driver.find_element(by=By.XPATH, value='//label[@for="specific"]').click()  # 特定預かり
+
+        self.driver.find_element(by=By.XPATH, value='//label[@for="yen"]').click()  # 円貨
+        self.send_to_element('//input[@id="stock-ticker"]', item["brand"])  # ティッカー
+        self.send_to_element('//span[@class="i-minus"]/../../input', str(item["qty"]))  # 口数
+
+        self.send_to_element('//input[@id="trade-password"]', self.config("sbi-trade-pass"))
+        self.driver.find_element(by=By.XPATH, value='//button[@id="password-button"]').click()
         self.wait.until(ec.presence_of_all_elements_located)
-        self.driver.find_element(by=By.XPATH, value='//*[@name="tranAccept"]').click()
+
+        self.driver.find_element(by=By.XPATH, value='//button[@data-ga-button="trade_order"]').click()  # 注文発注
+
         logger.info(f'bought {item["brand"]}({item["price"]} USD) x {item["qty"]} = {item["price"] * item["qty"]} (USD rate: {usdrate})')
         simpleslack.send_to_slack(f':moneybag:{item["brand"]}(単価${item["price"]})を{item["qty"]}口購入しました(合計金額${item["price"] * item["qty"]}/レート$1={usdrate}円)')
 
@@ -306,7 +336,7 @@ WHERE m_log_date = ?
         return etf_button_count > 0
 
     def to_number(self, text):
-        return text.replace(",", "").replace(" ", "").replace("\n", " ").replace("+", "")
+        return text.replace(",", "").replace(" ", "").replace("\n", " ").replace("+", "").replace("円", "")
 
     def to_number_array(self, text):
         result = re.match(r"[^0-9\-\.]*([0-9\-\.]+)[^0-9\-\.]+([0-9\-\.]+)", self.to_number(text))
