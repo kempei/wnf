@@ -35,7 +35,7 @@ phases:
     commands:
       - echo Build completed on `date`
       - echo Testing Docker image...
-      - docker run $DOCKERENV -t $IMAGE_REPO_NAME:latest python -m unittest tests/test_scraper.py
+      - docker run -t $IMAGE_REPO_NAME:latest python -m unittest tests/test_scraper.py
       - echo Test completed on `date`
       - echo Pushing the Docker image...
       - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
