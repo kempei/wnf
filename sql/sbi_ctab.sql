@@ -1,18 +1,18 @@
 CREATE TABLE sbi_portfolio (
-    log_date DATE PRIMARY KEY,
-    usdrate NUMERIC(6,2),
-    total_amount_jpy NUMERIC(18,0),
-    total_amount_usd NUMERIC(20,2),
-    inv_capacity_jpy NUMERIC(18,0)
+    log_date TEXT PRIMARY KEY,
+    usdrate NUMERIC,
+    total_amount_jpy NUMERIC,
+    total_amount_usd NUMERIC,
+    inv_capacity_jpy NUMERIC
 );
 CREATE TABLE sbi_portfolio_detail (
-    log_date DATE,
+    log_date TEXT,
     brand TEXT,
-    price_usd NUMERIC(20,2),
-    qty NUMERIC(18,0),
-    amount_jpy NUMERIC(18,0),
-    amount_jpy_delta NUMERIC(18,0),
-    amount_usd NUMERIC(20,2),
-    amount_usd_delta NUMERIC(20,2),
+    price_usd NUMERIC,
+    qty NUMERIC,
+    amount_jpy NUMERIC,
+    amount_jpy_delta NUMERIC,
+    amount_usd NUMERIC,
+    amount_usd_delta NUMERIC,
     PRIMARY KEY (log_date, brand)
 );

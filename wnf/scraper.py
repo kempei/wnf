@@ -1,56 +1,60 @@
 from logzero import logger
-import psycopg2
+import apsw
 
-from wnf.prepare import PreparingCursor
-
-from selenium import webdriver 
+from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.remote.webelement import WebElement, By
+from selenium.webdriver.remote.webelement import By
+from selenium.webdriver.support import expected_conditions as ec
 
-import os, datetime, time, pytz, requests
+import boto3
+from ssm_cache import SSMParameter
+import json
 
-from decimal import Decimal
+import os
+import datetime
+import time
+import pytz
 
-class Scraper():
-    def db_init(self):
-        logger.info("postgresql initializing...")
-        db_user = os.environ['DB_USER']
-        db_endpoint = os.environ['DB_ENDPOINT']
-        db_pass = os.environ['DB_PASS']
-        dsn = "postgresql://{0}:{1}@{2}:5432/money".format(db_user, db_pass, db_endpoint) 
-        self.conn = psycopg2.connect(dsn)
-        
-    def init(self):
+import requests
+
+
+class Configure:
+    def __init__(self) -> None:
+        self.__config = None
+
+    def config(self, key: str) -> dict:
+        if self.__config is None:
+            self.__config = json.loads(SSMParameter("wnf_config").value)
+        return self.__config[key]
+
+
+class Scraper(Configure):
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.alphavantage_apikey = self.config("alphavantage_api_key")
+
         logger.info("selenium initializing...")
-
-        if not 'ALPHAVANTAGE_API_KEY' in os.environ:
-            raise ValueError("env ALPHAVANTAGE_API_KEY is not found.")
-        self.alphavantage_apikey = os.environ['ALPHAVANTAGE_API_KEY']
 
         options = webdriver.ChromeOptions()
         options.add_argument("--headless")
         options.add_argument("--disable-gpu")
-        options.add_argument("--window-size=800x1200")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--window-size=800x1000")
         options.add_argument("--disable-application-cache")
         options.add_argument("--disable-infobars")
         options.add_argument("--no-sandbox")
         options.add_argument("--hide-scrollbars")
-        options.add_argument("--v=99")
-        # options.add_argument("--single-process")
+        options.add_argument("--lang=ja-JP")
         options.add_argument("--ignore-certificate-errors")
-        # options.add_argument("--homedir=/tmp")
-        options.add_argument('--user-agent=Mozilla/5.0')
-        options.add_experimental_option("prefs", {'profile.managed_default_content_settings.images':2})
+        options.add_argument("--blink-settings=imagesEnabled=false")
+        options.add_argument("--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36")
+        options.binary_location = "/usr/bin/chromium-browser"
         self.driver = webdriver.Chrome(options=options)
+        self.wait = WebDriverWait(self.driver, 5)
         self.driver.implicitly_wait(10)
-        self.wait = WebDriverWait(self.driver, 10)
 
     def close(self):
-        try:
-            self.conn.close()
-        except:
-            logger.debug("Ignore exception (conn close)")
-
         try:
             self.driver.close()
         except:
@@ -60,15 +64,6 @@ class Scraper():
             self.driver.quit()
         except:
             logger.debug("Ignore exception (driver quit)")
-
-    def existance_check(self, con, table_name, cols, values):
-        cur_check = con.cursor(cursor_factory=PreparingCursor)
-        sql = 'SELECT COUNT(*) FROM {0} WHERE {1} = %s'.format(table_name, cols[0])
-        for i in range(1, len(cols)):
-            sql = sql + ' AND {0} = %s'.format(cols[i])
-        cur_check.prepare(sql)
-        cur_check.execute(values)
-        return not cur_check.fetchone() == (0,)
 
     def print_html(self):
         html = self.driver.execute_script("return document.getElementsByTagName('html')[0].innerHTML")
@@ -82,28 +77,124 @@ class Scraper():
 
     def send_to_element_direct(self, element, keys):
         element.clear()
-        logger.debug("[send_to_element] " + element.get_attribute('id'))
+        logger.debug("[send_to_element] " + element.get_attribute("id"))
         element.send_keys(keys)
 
     def get_local_date(self):
-        d = datetime.datetime.now(pytz.timezone('Asia/Tokyo'))
-        return datetime.date(d.year, d.month, d.day)
+        return datetime.datetime.now(pytz.timezone("Asia/Tokyo")).date()
 
-    def get_brand_price(self, brand):
-        r = requests.get('https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={0}&apikey={1}'.format(brand,  self.alphavantage_apikey))
+    def get_brand_price(self, brand) -> float:
+        r = requests.get("https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={0}&apikey={1}".format(brand, self.alphavantage_apikey))
         if r.status_code >= 500 and r.status_code < 600:
-            logger.warn('alphavantage invalid http status {0}'.format(r.status_code))
+            logger.warn("alphavantage invalid http status {0}".format(r.status_code))
             time.sleep(3)
             return self.get_brand_price(brand)
         elif r.status_code != 200:
-            logger.error('alphavantage invalid http status {0}'.format(r.status_code))
+            logger.error("alphavantage invalid http status {0}".format(r.status_code))
             raise ConnectionRefusedError()
         else:
             data = r.json()
-            if 'Note' in data:
+            if "Note" in data:
                 # API throttle
-                logger.info('sleeping 60 secs to avoid alphavantage api throttle...')
+                logger.info("sleeping 60 secs to avoid alphavantage api throttle...")
                 time.sleep(60)
                 return self.get_brand_price(brand)
-            return Decimal(data['Global Quote']['05. price'])
+            return float(data["Global Quote"]["05. price"])
 
+    def get_handle_with_xpath(self, xpath):
+        for handle in self.driver.window_handles:
+            self.driver.switch_to.window(handle)
+            logger.debug(self.driver.title)
+            self.wait.until(ec.presence_of_all_elements_located)
+            if len(self.driver.find_elements(by=By.XPATH, value=xpath)):
+                return handle
+        raise ValueError(f"cannot find xpath: {xpath} in {len(self.driver.window_handles)} handles")
+
+    def title_check(self, title):
+        if self.driver.title != title:
+            raise AssertionError(f"title must be {title} but {self.driver.title}")
+
+
+class DBScraper(Scraper):
+    DB_NAME = "wnf.db"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.conn: apsw.Connection = self.__get_sqlite3_connection()
+        self.committed_db: bool = False
+
+    def begin_transaction(self, transaction_id: int = 1):
+        self.conn.execute(f"BEGIN TRANSACTION transaction_{transaction_id}")
+
+    def commit_transaction(self, transaction_id: int = 1):
+        self.conn.execute(f"COMMIT TRANSACTION transaction_{transaction_id}")
+        self.committed_db = True
+
+    def rollback_transaction(self, transaction_id: int = 1):
+        self.conn.execute(f"ROLLBACK TRANSACTION transaction_{transaction_id}")
+
+    def __has_file(self, bucket_name: str, target_key: str, is_allowed_zero_byte: bool = True) -> bool:
+        """Check to exist a file in S3.
+        Args:
+            bucket_name (str): S3 bucket name
+            target_key (str): target of S3 key
+            is_allowed_zero_byte (bool, optional): True: Allow an empty file, False: Not allow. Defaults to True.
+        Returns:
+            bool: True: Exists file. False: Not exists.
+        """
+        s3_client = boto3.client("s3")
+        response = s3_client.list_objects_v2(
+            Bucket=bucket_name,
+            Prefix=target_key,
+        )
+        key_count: int = response["KeyCount"]
+        return key_count > 0
+
+    def get_sql_from_file(self, sql_file_path: str) -> str:
+        with open(sql_file_path, "r", encoding="utf-8") as f:
+            sql = f.read()
+        return sql
+
+    def __get_sqlite3_connection(self) -> apsw.Connection:
+        logger.info("sqlite3 initializing...")
+        local_db_file = f"/tmp/{self.DB_NAME}"
+        db_on_local = os.path.isfile(local_db_file)
+        db_on_s3 = False
+        if not db_on_local:
+            s3_bucket_name = self.config("s3-bucket")
+            s3_resource = boto3.resource("s3")
+            bucket = s3_resource.Bucket(s3_bucket_name)
+            db_on_s3 = self.__has_file(s3_bucket_name, self.DB_NAME)
+            if db_on_s3:
+                bucket.download_file(self.DB_NAME, local_db_file)
+                logger.info("Downloaded sqlite3 database file.")
+        conn = apsw.Connection(local_db_file)
+        if not db_on_local and not db_on_s3:
+            conn.execute(self.get_sql_from_file("sql/sbi_ctab.sql"))
+            conn.execute(self.get_sql_from_file("sql/wn_ctab.sql"))
+            logger.info("Created sqlite3 database.")
+        return conn
+
+    def __store_db_to_s3(self):
+        s3_bucket_name = self.config("s3-bucket")
+        s3_resource = boto3.resource("s3")
+        bucket = s3_resource.Bucket(s3_bucket_name)
+        bucket.upload_file(Filename=f"/tmp/{self.DB_NAME}", Key=self.DB_NAME)
+        logger.info("Uploaded sqlite3 database file.")
+
+    def existance_check(self, table_name, cols, values):
+        cursor = self.conn.cursor()
+        sql = f"SELECT COUNT(*) FROM {table_name} WHERE {cols[0]} = ?"
+        for i in range(1, len(cols)):
+            sql = sql + f" AND {cols[i]} = ?"
+        rows = list(cursor.execute(sql, values))
+        return rows[0][0] > 0
+
+    def close(self):
+        try:
+            self.conn.close()
+            if self.committed_db:
+                self.__store_db_to_s3()
+        except:
+            logger.debug("Ignore exception (conn close)")
+        super().close()

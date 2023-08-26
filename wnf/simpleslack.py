@@ -1,14 +1,18 @@
-import slack, os
+import slack
 
-class Slack():
+from wnf.scraper import Configure
+
+
+class Slack(Configure):
     def __init__(self):
-        self.slack_client = slack.WebClient(token=os.environ['SLACK_CLIENT_SECRET'])
-        self.slack_channel = os.environ['SLACK_CHANNEL']
+        super().__init__()
+        self.slack_client = slack.WebClient(token=self.config("slack_client_secret"))
+        self.slack_channel = self.config("slack_channel")
+
 
 s = Slack()
 
-def send_to_slack(text):
-    response = s.slack_client.chat_postMessage(channel = s.slack_channel, text=text)
-    assert response["ok"]
 
-    
+def send_to_slack(text: str):
+    response = s.slack_client.chat_postMessage(channel=s.slack_channel, text=text)
+    assert response["ok"]

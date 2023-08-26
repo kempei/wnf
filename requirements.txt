@@ -8,8 +8,12 @@ selenium
 # Timezone
 pytz
 
-# Database
-psycopg2
-
 # Slack
 slackclient
+
+# AWS / SSM
+boto3
+ssm-cache
+
+# sqlite3
+apsw
