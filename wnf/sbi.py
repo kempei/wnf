@@ -159,7 +159,6 @@ class SbiTrade(DBScraper):
         lis = self.driver.find_elements(by=By.XPATH, value='//div[@id="refer-stock"]/div/ul/li')
         if len(lis) == 0:
             logger.debug("no today's orders.")
-            self.store_html_to_s3("test_orders")
             return False
         for li in lis:
             status_text = li.find_element(by=By.XPATH, value="div[2]").get_attribute("textContent")
