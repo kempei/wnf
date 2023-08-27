@@ -153,6 +153,7 @@ class SbiTrade(DBScraper):
     def __exist_current_orders(self):
         self.driver.get("https://global.sbisec.co.jp/refer/us/stock")
         self.wait.until(ec.presence_of_all_elements_located)
+        time.sleep(5)
         lis = self.driver.find_elements(by=By.XPATH, value='//div[@id="refer-stock"]/div/ul/li')
         if len(lis) == 0:
             return False
@@ -284,6 +285,7 @@ WHERE m_log_date = ?
         # NISA 投資枠の確認
         self.driver.get("https://global.sbisec.co.jp/account/summary")
         self.wait.until(ec.presence_of_all_elements_located)
+        time.sleep(5)
         nisa_capacity = int(self.to_number(self.driver.find_element(by=By.XPATH, value='//ul[@id="nisa-buy-table"]/li/div[2]').get_attribute("textContent")))
         yen_total_limit = int(item["price"] * item["qty"] * usdrate) + 1
 
