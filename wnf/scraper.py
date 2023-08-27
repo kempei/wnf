@@ -114,6 +114,15 @@ class Scraper(Configure):
         if self.driver.title != title:
             raise AssertionError(f"title must be {title} but {self.driver.title}")
 
+    def store_html_to_s3(self, header: str):
+        src = self.driver.page_source
+        timestr = datetime.datetime.now().isoformat()
+        s3_bucket_name = self.config("s3-bucket")
+        s3_resource = boto3.resource("s3")
+        obj = s3_resource.Object(s3_bucket_name, f"{header}_{timestr}.html")
+        obj.put(Body=src)
+        logger.info("Uploaded html source to S3")
+
 
 class DBScraper(Scraper):
     DB_NAME = "wnf.db"

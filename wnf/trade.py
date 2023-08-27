@@ -17,6 +17,9 @@ if __name__ == "__main__":
         try:
             wn.login()
             wn.portfolio()
+        except:
+            wn.store_html_to_s3("wn_error")
+            raise
         finally:
             wn.close()
 
@@ -25,6 +28,9 @@ if __name__ == "__main__":
         try:
             sbi.login()
             sbi.portfolio()
+        except:
+            sbi.store_html_to_s3("sbi_portfolio_error")
+            raise
         finally:
             sbi.close()
 
@@ -33,6 +39,9 @@ if __name__ == "__main__":
         try:
             sbi.login()
             sbi.trade()
+        except:
+            sbi.store_html_to_s3("sbi_trade_error")
+            raise
         finally:
             sbi.close()
 

@@ -9,6 +9,7 @@ class ScraperTest(TestCase):
     def test_selenium(self):
         scraper = Scraper()
         scraper.driver.get("http://www.yahoo.co.jp")
+        scraper.close()
 
     def test_db(self):
         try:
@@ -32,6 +33,13 @@ class ScraperTest(TestCase):
         assert scraper.existance_check("wn_portfolio", ["log_date"], ["2100-01-01"])
         scraper.conn.execute("ROLLBACK TRANSACTION wnf_portfolio")
         assert not scraper.existance_check("wn_portfolio", ["log_date"], ["2100-01-01"])
+        scraper.close()
 
     def test_slack(self):
         simpleslack.send_to_slack("slack unittest")
+
+    def test_html_to_s3(self):
+        scraper = Scraper()
+        scraper.driver.get("http://www.yahoo.co.jp")
+        scraper.store_html_to_s3("test")
+        scraper.close()

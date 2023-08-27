@@ -151,15 +151,20 @@ class SbiTrade(DBScraper):
         self.commit_transaction()
 
     def __exist_current_orders(self):
+        self.driver.get(self.get_sbi_url("global_trade"))
+        self.wait.until(ec.presence_of_all_elements_located)
         self.driver.get("https://global.sbisec.co.jp/refer/us/stock")
         self.wait.until(ec.presence_of_all_elements_located)
         time.sleep(5)
         lis = self.driver.find_elements(by=By.XPATH, value='//div[@id="refer-stock"]/div/ul/li')
         if len(lis) == 0:
+            logger.debug("no today's orders.")
+            self.store_html_to_s3("test_orders")
             return False
         for li in lis:
             status_text = li.find_element(by=By.XPATH, value="div[2]").get_attribute("textContent")
-            if status_text == "注文中":
+            if not status_text in ("取消済", "注文状況"):
+                logger.debug(f"detected {status_text}")
                 return True
         return False
 
@@ -283,6 +288,8 @@ WHERE m_log_date = ?
 
     def buy(self, item, usdrate):
         # NISA 投資枠の確認
+        self.driver.get(self.get_sbi_url("global_trade"))
+        self.wait.until(ec.presence_of_all_elements_located)
         self.driver.get("https://global.sbisec.co.jp/account/summary")
         self.wait.until(ec.presence_of_all_elements_located)
         time.sleep(5)
