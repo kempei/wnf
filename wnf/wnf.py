@@ -225,10 +225,10 @@ class WealthNavi(DBScraper):
         history_brand = spans[1].get_attribute("textContent")
         trade_qty = self.__to_number(spans[2].text)
         brand_price_usd = self.__to_number(spans[3].get_attribute("textContent"))
+        self.history_usdrate = spans[4].get_attribute("textContent")
         spans = tr.find_elements(by=By.XPATH, value="td/span")
         trade_jpy = self.__to_number(spans[0].get_attribute("textContent"))
         trade_usd = self.__to_number(spans[1].get_attribute("textContent"))
-        self.history_usdrate = spans[4].get_attribute("textContent")
         logger.debug(f"{history_brand} {trade_qty} {brand_price_usd} {self.history_usdrate} {trade_jpy} {trade_usd}")
         self.conn.execute(
             "INSERT INTO wn_history_detail (start_date, history_type, trade_type, brand, brand_price_usd, trade_qty, trade_jpy, trade_usd) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
