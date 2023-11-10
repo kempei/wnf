@@ -230,9 +230,11 @@ WHERE m_log_date = ?
         required_ic += required_ic * 0.01  # 手数料0.49%を加味して1%を足しておく
         required_ic = math.ceil(required_ic)  # 切り上げ
         current_ic: int = int(self.get_inv_capacity())
-        desired_ic = required_ic - current_ic + 100000  # 10万円余分に入れておく
+        desired_ic = required_ic - current_ic + 10000  # 1万円余分に入れておく
         logger.info(f"current investment capacity: {current_ic}, required: {required_ic}, desired: {desired_ic}")
         if desired_ic > 0:
+            if desired_ic < 1000:
+                desired_ic = 1000
             self.add_inv_capacity(desired_ic)
 
         for item in buy_list:
