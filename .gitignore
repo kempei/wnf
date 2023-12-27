@@ -8,3 +8,4 @@ __pycache__
 .pytest_cache
 data
 wnf.db
+.DS_Store
