@@ -257,7 +257,8 @@ class WealthNavi(DBScraper):
         return ret
 
     def __to_brand(self, text) -> str:
-        result = re.match(r".*\((.+)\)", text)
+        stripped_text = text.replace("\n", "").strip()
+        result = re.match(r".*\((.+)\)", stripped_text)
         if result is None:
             logger.debug(f"__to_brand: {text}")
             return "CASH"
