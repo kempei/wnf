@@ -310,17 +310,21 @@ WHERE m_log_date = ?
 
         self.driver.find_element(by=By.XPATH, value='//label[@for="today"]').click()  # 当日中
 
+        self.driver.find_element(by=By.XPATH, value='//label[@for="yen"]').click()  # 円貨
+        self.send_to_element('//span[@class="i-minus"]/../../input', str(item["qty"]))  # 口数
+
+        self.send_to_element('//input[@id="trade-password"]', self.config("sbi-trade-pass"))  # 取引パスワード
+
+        self.send_to_element('//input[@id="stock-ticker"]', item["brand"])  # ティッカー
+        self.driver.find_element(by=By.XPATH, value='//button[@data-ga-button="ticker"]').click()  # 表示ボタンをクリックして NISA が可能かを判定させる
+        time.sleep(1)
+
         nisa_option_button = self.driver.find_elements(by=By.XPATH, value='//label[@for="growth-investment"]')
         if nisa_capacity >= yen_total_limit and len(nisa_option_button) > 0:  # NISA選択肢がない場合を考慮 (債権など)
             nisa_option_button[0].click()  # NISA預かり(2023年新NISA 成長株)
         else:
             self.driver.find_element(by=By.XPATH, value='//label[@for="specific"]').click()  # 特定預かり
 
-        self.driver.find_element(by=By.XPATH, value='//label[@for="yen"]').click()  # 円貨
-        self.send_to_element('//input[@id="stock-ticker"]', item["brand"])  # ティッカー
-        self.send_to_element('//span[@class="i-minus"]/../../input', str(item["qty"]))  # 口数
-
-        self.send_to_element('//input[@id="trade-password"]', self.config("sbi-trade-pass"))
         self.driver.find_element(by=By.XPATH, value='//button[@id="password-button"]').click()
         self.wait.until(ec.presence_of_all_elements_located)
 
