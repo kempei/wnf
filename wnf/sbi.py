@@ -310,8 +310,9 @@ WHERE m_log_date = ?
 
         self.driver.find_element(by=By.XPATH, value='//label[@for="today"]').click()  # 当日中
 
-        if nisa_capacity >= yen_total_limit:
-            self.driver.find_element(by=By.XPATH, value='//label[@for="growth-investment"]').click()  # NISA預かり(2023年新NISA 成長株)
+        nisa_option_button = self.driver.find_elements(by=By.XPATH, value='//label[@for="growth-investment"]')
+        if nisa_capacity >= yen_total_limit and len(nisa_option_button) > 0:  # NISA選択肢がない場合を考慮 (債権など)
+            nisa_option_button[0].click()  # NISA預かり(2023年新NISA 成長株)
         else:
             self.driver.find_element(by=By.XPATH, value='//label[@for="specific"]').click()  # 特定預かり
 
