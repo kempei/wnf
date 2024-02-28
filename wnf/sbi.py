@@ -90,7 +90,9 @@ class SbiTrade(DBScraper):
 
         # 外貨建て口座 - 保有証券
         self.driver.get(self.get_sbi_url("wallet"))  # 口座へ移動
+        self.wait.until(ec.presence_of_all_elements_located)
         self.driver.get(self.direct_path_dict["bondlist"])
+        self.wait.until(ec.presence_of_all_elements_located)
         trs = self.driver.find_elements(by=By.XPATH, value='//*[@id="id2"]/tbody/tr')
         if len(trs) == 0:
             self.print_html()
@@ -227,10 +229,10 @@ WHERE m_log_date = ?
         required_ic: float = 0
         for item in buy_list:
             required_ic += item["price"] * item["qty"] * usdrate
-        required_ic += required_ic * 0.01  # 手数料0.49%を加味して1%を足しておく
-        required_ic = math.ceil(required_ic)  # 切り上げ
+        required_ic += required_ic * 0.06  # 手数料0.49%と為替分を加味して6%を足しておく
+        required_ic = int(math.ceil(required_ic))  # 切り上げ
         current_ic: int = int(self.get_inv_capacity())
-        desired_ic = required_ic - current_ic + 10000  # 1万円余分に入れておく
+        desired_ic = required_ic - current_ic
         logger.info(f"current investment capacity: {current_ic}, required: {required_ic}, desired: {desired_ic}")
         if desired_ic > 0:
             if desired_ic < 1000:
@@ -250,11 +252,11 @@ WHERE m_log_date = ?
         imgs = self.driver.find_elements(by=By.XPATH, value='//img[@alt="住信SBIネット銀行　即時決済サービス"]')
         imgs[len(imgs) - 1].click()  # 後ろのイメージをクリック
         self.wait.until(ec.presence_of_all_elements_located)
-        self.send_to_element('//*[@name="FML_TRANSFER_AMOUNT"]', str(ic))
+        self.send_to_element('//*[@name="FML_TRANSFER_AMOUNT"]', str(int(ic)))
         self.send_to_element('//*[@name="transefer_pass"]', self.config("sbi-trade-pass"))
-        self.driver.find_element(by=By.XPATH, value='//*[@id="MAINAREA02_780"]/form/div[2]/ul/li[1]/a/input').click()
+        self.driver.find_element(by=By.XPATH, value='//input[@alt="振込指示確認"]').click()
         self.wait.until(ec.presence_of_all_elements_located)
-        self.driver.find_element(by=By.XPATH, value='//*[@id="MAINAREA02_780"]/div[4]/ul/li[1]/form/a/input').click()
+        self.driver.find_element(by=By.XPATH, value='//input[@alt="振込指示"]').click()
         self.wait.until(ec.presence_of_all_elements_located)
         logger.debug("processing bank...")
         time.sleep(5)
@@ -343,8 +345,11 @@ WHERE m_log_date = ?
 
     def check_etf(self, link):
         self.driver.execute_script("window.open()")
+        self.wait.until(ec.presence_of_all_elements_located)
         self.driver.switch_to.window(self.driver.window_handles[1])
+        self.wait.until(ec.presence_of_all_elements_located)
         self.driver.get(link)
+        self.wait.until(ec.presence_of_all_elements_located)
         etf_button_count = len(self.driver.find_elements(by=By.XPATH, value='//button[@data-ga-tab="etfInformation"]'))
         self.driver.close()
         self.driver.switch_to.window(self.driver.window_handles[0])

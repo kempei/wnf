@@ -32,7 +32,7 @@ class Scraper(Configure):
     def __init__(self) -> None:
         super().__init__()
 
-        self.alphavantage_apikey = self.config("alphavantage_api_key")
+        self.iex_apikey = self.config("iex-api-key")
 
         logger.info("selenium initializing...")
 
@@ -49,7 +49,6 @@ class Scraper(Configure):
         options.add_argument("--ignore-certificate-errors")
         options.add_argument("--blink-settings=imagesEnabled=false")
         options.add_argument("--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36")
-        options.binary_location = "/usr/bin/chromium-browser"
         self.driver = webdriver.Chrome(options=options)
         self.wait = WebDriverWait(self.driver, 5)
         self.driver.implicitly_wait(10)
@@ -84,22 +83,18 @@ class Scraper(Configure):
         return datetime.datetime.now(pytz.timezone("Asia/Tokyo")).date()
 
     def get_brand_price(self, brand) -> float:
-        r = requests.get("https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={0}&apikey={1}".format(brand, self.alphavantage_apikey))
+        # TODO: iex cloud api に書き換える
+        r = requests.get(f"https://api.iex.cloud/v1/data/core/quote/{brand}?token={self.iex_apikey}")
         if r.status_code >= 500 and r.status_code < 600:
-            logger.warn("alphavantage invalid http status {0}".format(r.status_code))
+            logger.warn("iex invalid http status {0}".format(r.status_code))
             time.sleep(3)
             return self.get_brand_price(brand)
         elif r.status_code != 200:
-            logger.error("alphavantage invalid http status {0}".format(r.status_code))
+            logger.error("iex invalid http status {0}".format(r.status_code))
             raise ConnectionRefusedError()
         else:
             data = r.json()
-            if "Note" in data:
-                # API throttle
-                logger.info("sleeping 60 secs to avoid alphavantage api throttle...")
-                time.sleep(60)
-                return self.get_brand_price(brand)
-            return float(data["Global Quote"]["05. price"])
+            return float(data[0]["latestPrice"])
 
     def get_handle_with_xpath(self, xpath):
         for handle in self.driver.window_handles:
