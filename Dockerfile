@@ -1,8 +1,8 @@
-FROM python:3.12.2-alpine3.19
+FROM python:3.11-alpine3.18
 
 # update apk repo
-RUN echo "http://dl-4.alpinelinux.org/alpine/v3.19/main" >> /etc/apk/repositories && \
-    echo "http://dl-4.alpinelinux.org/alpine/v3.19/community" >>  /etc/apk/repositories
+RUN echo "http://dl-4.alpinelinux.org/alpine/v3.18/main" >> /etc/apk/repositories && \
+    echo "http://dl-4.alpinelinux.org/alpine/v3.18/community" >>  /etc/apk/repositories
 
 VOLUME /tmp/
 
