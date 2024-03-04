@@ -32,7 +32,7 @@ class Scraper(Configure):
     def __init__(self) -> None:
         super().__init__()
 
-        self.iex_apikey = self.config("iex-api-key")
+        self.twelvedata_apikey = self.config("twelvedata-api-key")
 
         logger.info("selenium initializing...")
 
@@ -83,18 +83,17 @@ class Scraper(Configure):
         return datetime.datetime.now(pytz.timezone("Asia/Tokyo")).date()
 
     def get_brand_price(self, brand) -> float:
-        # TODO: iex cloud api に書き換える
-        r = requests.get(f"https://api.iex.cloud/v1/data/core/quote/{brand}?token={self.iex_apikey}")
+        r = requests.get(f"https://api.twelvedata.com/price?symbol={brand}&apikey={self.twelvedata_apikey}")
         if r.status_code >= 500 and r.status_code < 600:
-            logger.warn("iex invalid http status {0}".format(r.status_code))
+            logger.warn("twelvedata invalid http status {0}".format(r.status_code))
             time.sleep(3)
             return self.get_brand_price(brand)
         elif r.status_code != 200:
-            logger.error("iex invalid http status {0}".format(r.status_code))
+            logger.error("twelvedata invalid http status {0}".format(r.status_code))
             raise ConnectionRefusedError()
         else:
             data = r.json()
-            return float(data[0]["latestPrice"])
+            return float(data["price"])
 
     def get_handle_with_xpath(self, xpath):
         for handle in self.driver.window_handles:
