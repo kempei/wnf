@@ -345,11 +345,13 @@ WHERE m_log_date = ?
 
     def check_etf(self, link):
         self.driver.execute_script("window.open()")
+        time.sleep(1)
         self.driver.switch_to.window(self.driver.window_handles[1])
         self.driver.get(link)
-        self.wait.until(ec.presence_of_all_elements_located)
+        time.sleep(1)
         etf_button_count = len(self.driver.find_elements(by=By.XPATH, value='//button[@data-ga-tab="etfInformation"]'))
         self.driver.close()
+        time.sleep(1)
         self.driver.switch_to.window(self.driver.window_handles[0])
         return etf_button_count > 0
 
