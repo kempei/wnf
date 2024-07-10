@@ -49,6 +49,7 @@ class SbiTrade(DBScraper):
             if self.driver.find_elements(by=By.ID, value='mymenuSec'):
                 logger.info(f"successfully logged in. current_url = {self.driver.current_url}")
                 self.sbi_core_url = self.driver.current_url
+                break
             else:
                 title_text_elements = self.driver.find_elements(by=By.CLASS_NAME, value="title-text")
                 if len(title_text_elements) == 0:
