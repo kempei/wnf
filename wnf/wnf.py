@@ -50,7 +50,7 @@ class WealthNavi(DBScraper):
 
             self.send_to_element('//*[@id="username"]', wn_id)
             self.send_to_element('//*[@id="password"]', wn_pass)
-            self.driver.find_element(by=By.XPATH, value='//*[@id="login"]').click()
+            self.driver.find_element(by=By.XPATH, value='//button[@name="action" and @data-action-button-primary="true"]').click()
             self.wait.until(ec.presence_of_all_elements_located)
             title = self.driver.title
             if __force_important_page_for_test:
