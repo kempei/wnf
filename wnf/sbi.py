@@ -26,7 +26,7 @@ class SbiTrade(DBScraper):
             "global_trade": "?OutSide=on&_ControlID=WPLETsmR001Control&_DataStoreID=DSWPLETsmR001Control&sw_page=Foreign&cat1=home&cat2=none&sw_param1=GB&getFlg=on",
         }
         self.sbi_core_url = "https://www.sbisec.co.jp/ETGate/"
-        self.direct_path_dict = {"bondlist": "https://trading0.sbisec.co.jp/bff/fbonds/BffPossessionBondList.do"}
+        self.direct_path_dict = {"bondlist": "https://global.sbisec.co.jp/account/assets"}
 
     def get_sbi_url(self, text):
         return f"{self.sbi_core_url}{self.path_dict[text]}"
@@ -46,7 +46,7 @@ class SbiTrade(DBScraper):
             self.driver.find_element(by=By.XPATH, value='//*[@name="ACT_login"]').click()
             time.sleep(5)
             self.wait.until(ec.presence_of_all_elements_located)
-            if self.driver.find_elements(by=By.ID, value='mymenuSec'):
+            if self.driver.find_elements(by=By.ID, value="mymenuSec"):
                 logger.info(f"successfully logged in. current_url = {self.driver.current_url}")
                 self.sbi_core_url = self.driver.current_url
                 break
@@ -89,41 +89,39 @@ class SbiTrade(DBScraper):
         inv_capacity_jpy = self.get_inv_capacity()
 
         # 外貨建て口座 - 保有証券
-        self.driver.get(self.get_sbi_url("wallet"))  # 口座へ移動
+        self.driver.get(self.get_sbi_url("global_trade"))  # 外貨建商品取引へ移動
         self.wait.until(ec.presence_of_all_elements_located)
-        self.driver.get(self.direct_path_dict["bondlist"])
+        self.driver.get(self.direct_path_dict["bondlist"])  # 外貨建商品取引 - 保有証券・資産 (米国)
         self.wait.until(ec.presence_of_all_elements_located)
-        trs = self.driver.find_elements(by=By.XPATH, value='//*[@id="id2"]/tbody/tr')
-        if len(trs) == 0:
+        lis = self.driver.find_elements(by=By.XPATH, value='//ul[contains(@class, "grid-table")]/li[@class="css-hopsx2"]/div/div/../..')
+        if len(lis) == 0:
             self.print_html()
-            raise AssertionError("no information at bondlist")
+            raise AssertionError(f"no information at assets. - {self.direct_path_dict['bondlist']}")
+        usdrate = self.driver.find_element(by=By.XPATH, value='//ul[contains(@class, "grid-table")]/../div[@class="wd-1-2"]/div/ul/li[2]/span').get_attribute("textContent")
         total_jpy = 0
         total_usd = 0
         detail_data: dict = {}
-        for tr in trs:
-            if tr.get_attribute("class") != "mtext":
+        for li in lis:
+            divs = li.find_elements(by=By.XPATH, value='div[contains(@class, "table-item")]')
+            if len(divs) == 0:
                 continue
-            brand = self.to_brand(tr.find_element(by=By.XPATH, value="td[1]/a").get_attribute("textContent"))
-            brand_link = tr.find_element(by=By.XPATH, value="td[1]/a").get_attribute("href")
-            logger.debug(f"checking {brand}...")
-            if not self.check_etf(brand_link):
-                logger.debug(f"skipped brand: {brand}")
-                continue
-            qty_text = tr.find_element(by=By.XPATH, value="td[2]").get_attribute("textContent")
-            if "（" in qty_text:
-                qty_array = self.to_number_array(qty_text)
-                qty = int(qty_array[0]) - int(qty_array[1])
+            ticker = divs[0].find_element(by=By.TAG_NAME, value="div").get_attribute("data-security-code")
+            if self.check_etf(ticker):
+                logger.debug(f"checking {ticker}...")
             else:
-                qty = self.to_number(qty_text)
-            price_usd = self.to_number_array(tr.find_element(by=By.XPATH, value="td[3]").get_attribute("textContent"))[1]
-            amount_usd = self.to_number_array(tr.find_element(by=By.XPATH, value="td[4]").get_attribute("textContent"))[0]
-            amount_jpy = self.to_number_array(tr.find_element(by=By.XPATH, value="td[4]").get_attribute("textContent"))[1]
+                logger.debug(f"skipped (not ETF): {ticker}")
+                continue
+            qty_text = divs[2].find_element(by=By.XPATH, value="div/p[1]").get_attribute("textContent")
+            qty = self.to_number(qty_text)
+            price_usd = self.to_number(divs[1].find_element(by=By.XPATH, value="div/p[1]").get_attribute("textContent"))
+            amount_usd = self.to_number(divs[5].find_element(by=By.XPATH, value="div/p[1]").get_attribute("textContent"))
+            amount_jpy = self.to_number(divs[5].find_element(by=By.XPATH, value="div/p[2]").get_attribute("textContent"))
             total_jpy += int(amount_jpy)
             total_usd += float(amount_usd)
-            amount_usd_delta = self.to_number_array(tr.find_element(by=By.XPATH, value="td[5]").get_attribute("textContent"))[0]
-            amount_jpy_delta = self.to_number_array(tr.find_element(by=By.XPATH, value="td[5]").get_attribute("textContent"))[1]
+            amount_usd_delta = self.to_number(divs[6].find_element(by=By.XPATH, value="div/p[1]").get_attribute("textContent"))
+            amount_jpy_delta = self.to_number(divs[6].find_element(by=By.XPATH, value="div/p[2]").get_attribute("textContent"))
 
-            dict_key = (log_date.isoformat(), brand)
+            dict_key = (log_date.isoformat(), ticker)
             if not dict_key in detail_data:
                 detail_data[dict_key] = [float(0), 0, 0, 0, float(0), float(0)]
             current_data = [float(price_usd), int(qty), int(amount_jpy), int(amount_jpy_delta), float(amount_usd), float(amount_usd_delta)]
@@ -136,7 +134,6 @@ class SbiTrade(DBScraper):
             )
         logger.info(f"inserted sbi_portfolio_detail for {log_date}")
 
-        usdrate = self.driver.find_element(by=By.XPATH, value='//*[@id="id2"]/../../../../following-sibling::table/tbody/tr[2]/td[2]').get_attribute("textContent")
         self.conn.execute(
             "INSERT INTO sbi_portfolio (log_date, usdrate, total_amount_jpy, total_amount_usd, inv_capacity_jpy) VALUES (?, ?, ?, ?, ?)",
             (
@@ -343,11 +340,11 @@ WHERE m_log_date = ?
             ).text
         )
 
-    def check_etf(self, link):
+    def check_etf(self, ticker: str):
         self.driver.execute_script("window.open()")
         time.sleep(1)
         self.driver.switch_to.window(self.driver.window_handles[1])
-        self.driver.get(link)
+        self.driver.get(f"https://global.sbisec.co.jp/invest/us/stock/{ticker}")
         time.sleep(1)
         etf_button_count = len(self.driver.find_elements(by=By.XPATH, value='//button[@data-ga-tab="etfInformation"]'))
         self.driver.close()
@@ -356,7 +353,7 @@ WHERE m_log_date = ?
         return etf_button_count > 0
 
     def to_number(self, text):
-        return text.replace(",", "").replace(" ", "").replace("\n", " ").replace("+", "").replace("円", "")
+        return text.replace(",", "").replace(" ", "").replace("\n", " ").replace("+", "").replace("円", "").replace("USD", "")
 
     def to_number_array(self, text):
         result = re.match(r"[^0-9\-\.]*([0-9\-\.]+)[^0-9\-\.]+([0-9\-\.]+)", self.to_number(text))
