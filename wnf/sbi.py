@@ -35,43 +35,51 @@ class SbiTrade(DBScraper):
         sbi_id = self.config("sbi-id")
         sbi_pass = self.config("sbi-pass")
 
-        # 重要なお知らせクリックを3回繰り返せるようにする
-        for i in range(3):
-            self.driver.get(self.sbi_core_url)
-            time.sleep(5)
-            self.wait.until(ec.presence_of_all_elements_located)
+        self.driver.get(self.sbi_core_url)
+        time.sleep(5)
+        self.wait.until(ec.presence_of_all_elements_located)
 
-            self.send_to_element('//*[@name="user_id"]', sbi_id)
-            self.send_to_element('//*[@name="user_password"]', sbi_pass)
-            self.driver.find_element(by=By.XPATH, value='//*[@name="ACT_login"]').click()
-            time.sleep(5)
-            self.wait.until(ec.presence_of_all_elements_located)
-            if self.driver.find_elements(by=By.ID, value="mymenuSec"):
-                logger.info(f"successfully logged in. current_url = {self.driver.current_url}")
-                self.sbi_core_url = self.driver.current_url
-                break
-            else:
-                title_text_elements = self.driver.find_elements(by=By.CLASS_NAME, value="title-text")
-                if len(title_text_elements) == 0:
-                    raise ValueError("failed to log in.")
-                if title_text_elements[0].text == "重要なお知らせ":
-                    table_element: WebElement = self.driver.find_element(by=By.XPATH, value="/html/body/div[1]/table/tbody/tr/td[1]/table/tbody/tr[2]/td[2]/form/table[4]/tbody/tr/td/table/tbody")
-                    link_elements: list[WebElement] = table_element.find_elements(by=By.TAG_NAME, value="a")
-                    message = f":loudspeaker:重要なお知らせが{len(link_elements)}件届いています"
-                    links: list[str] = list()
-                    for link_element in link_elements:
-                        logger.info(f"Important information: {link_element.text}")
-                        links.append(link_element.get_attribute("href"))
-                        message += f"\n{link_element.text}"
-                    for link in links:
-                        logger.debug(f"get: {link}")
-                        self.driver.get(link)
-                        self.wait.until(ec.presence_of_all_elements_located)
-                        button_xpath = "//input[@name='ACT_estimate']"
-                        self.wait.until(ec.element_to_be_clickable((By.XPATH, button_xpath)))
-                        self.driver.find_element(by=By.XPATH, value=button_xpath).click()
-                        self.wait.until(ec.presence_of_all_elements_located)
-                    simpleslack.send_to_slack(message)
+        self.send_to_element('//*[@name="user_id"]', sbi_id)
+        self.send_to_element('//*[@name="user_password"]', sbi_pass)
+        self.driver.find_element(by=By.XPATH, value='//*[@name="ACT_login"]').click()
+        time.sleep(5)
+        self.wait.until(ec.presence_of_all_elements_located)
+        mymenu = self.driver.find_elements(by=By.ID, value="mymenuSec")
+        if not mymenu:
+            # 重要なお知らせ
+            title_text_elements = self.driver.find_elements(by=By.CLASS_NAME, value="title-text")
+            if len(title_text_elements) == 0:
+                raise ValueError("failed to log in.")
+            if title_text_elements[0].text != "重要なお知らせ":
+                raise ValueError(f"unknown message: {title_text_elements[0].text}")
+
+            # 重要なお知らせのクリック
+            form: WebElement = self.driver.find_element(by=By.NAME, value="FORM")
+            link_elements: list[WebElement] = form.find_elements(by=By.XPATH, value="table//a")
+            message = f":loudspeaker:重要なお知らせが{len(link_elements)}件届いています"
+            links: list[str] = list()
+            for link_element in link_elements:
+                logger.info(f"Important information: {link_element.text}")
+                links.append(link_element.get_attribute("href"))
+                message += f"\n{link_element.text}"
+            for link in links:
+                logger.debug(f"get: {link}")
+                self.driver.get(link)
+                self.wait.until(ec.presence_of_all_elements_located)
+                button_xpath = "//input[@type='submit']"
+                button_element = self.driver.find_element(by=By.XPATH, value=button_xpath)[0]
+                self.wait.until(ec.element_to_be_clickable(button_element))
+                button_element.click()
+                self.wait.until(ec.presence_of_all_elements_located)
+            simpleslack.send_to_slack(message)
+            # 再度メインページへ遷移
+            self.driver.get(self.sbi_core_url)
+            mymenu = self.driver.find_elements(by=By.ID, value="mymenuSec")
+            if not mymenu:
+                raise ValueError("failed to log in after clinking important information.")
+
+        logger.info(f"successfully logged in. current_url = {self.driver.current_url}")
+        self.sbi_core_url = self.driver.current_url
 
     def portfolio(self):
         logger.info("starting sbi portfolio")
