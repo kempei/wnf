@@ -251,19 +251,13 @@ WHERE m_log_date = ?
         logger.info("adding investment capacity {0} JPY".format(ic))
         self.driver.get(self.get_sbi_url("add_inv_capacity"))
         logger.debug(self.driver.title)
-        # self.wait.until(ec.presence_of_all_elements_located)
-        # self.driver.find_element_by_xpath('//*[@id="MAINAREA01"]/div[5]/div/div/div/div/table/tbody/tr/td[3]/ul/li[1]').click() #入金
         self.wait.until(ec.presence_of_all_elements_located)
-        imgs = self.driver.find_elements(by=By.XPATH, value='//img[@alt="住信SBIネット銀行　即時決済サービス"]')
-        imgs[len(imgs) - 1].click()  # 後ろのイメージをクリック
+        self.send_to_element('//input[@id="ReceiptInputLabel-input"]', str(int(ic)))
+        self.send_to_element('//input[@aria-label="tadepassword"]', self.config("sbi-trade-pass"))
+        self.driver.find_element(by=By.XPATH, value='//button[text()="入金指示確認"]').click()
         self.wait.until(ec.presence_of_all_elements_located)
-        self.send_to_element('//*[@name="FML_TRANSFER_AMOUNT"]', str(int(ic)))
-        self.send_to_element('//*[@name="transefer_pass"]', self.config("sbi-trade-pass"))
-        self.driver.find_element(by=By.XPATH, value='//input[@alt="振込指示確認"]').click()
+        self.driver.find_element(by=By.XPATH, value='//button[@id="targetButton"]').click()
         self.wait.until(ec.presence_of_all_elements_located)
-        self.driver.find_element(by=By.XPATH, value='//input[@alt="振込指示"]').click()
-        self.wait.until(ec.presence_of_all_elements_located)
-        logger.debug("processing bank...")
         time.sleep(5)
 
         handle = self.driver.current_window_handle
